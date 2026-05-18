@@ -1,0 +1,5 @@
+node_modules/
+dist/
+.env
+data/cameras.yaml
+data/go2rtc.yaml

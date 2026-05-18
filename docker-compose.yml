@@ -1,0 +1,34 @@
+services:
+  nvr-host:
+    build: .
+    container_name: nvr-host
+    restart: unless-stopped
+    environment:
+      PORT: "3000"
+      ADMIN_USER: ${ADMIN_USER:-admin}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD:-change-me}
+      CAMERA_CONFIG_PATH: /app/data/cameras.yaml
+      GO2RTC_CONFIG_PATH: /app/data/go2rtc.yaml
+      GO2RTC_BASE_URL: http://go2rtc:1984
+      GO2RTC_PUBLIC_PORT: "1984"
+      GO2RTC_CONTAINER_NAME: nvr-go2rtc
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./data:/app/data
+      - /var/run/docker.sock:/var/run/docker.sock
+    depends_on:
+      - go2rtc
+
+  go2rtc:
+    image: alexxit/go2rtc:latest
+    container_name: nvr-go2rtc
+    restart: unless-stopped
+    ports:
+      - "1984:1984"
+      - "8554:8554"
+      - "8555:8555/tcp"
+      - "8555:8555/udp"
+    volumes:
+      - ./data/go2rtc.yaml:/config/go2rtc.yaml
+    command: ["-config", "/config/go2rtc.yaml"]
