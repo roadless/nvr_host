@@ -63,7 +63,7 @@ fi
 sudo install -m 0755 "$APP_DIR/scripts/deploy.sh" /usr/local/bin/nvr-update
 sudo usermod -aG docker "$USER" || true
 
-APP_DIR="$APP_DIR" COMPOSE="sudo docker compose" SKIP_PULL=1 "$APP_DIR/scripts/deploy.sh"
+APP_DIR="$APP_DIR" COMPOSE="sudo docker compose" SKIP_PULL=1 bash "$APP_DIR/scripts/deploy.sh"
 
 cat <<EOF
 
