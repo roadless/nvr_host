@@ -63,7 +63,8 @@ export async function writeGo2RtcConfig(config: CameraConfigFile): Promise<void>
   const candidates = go2RtcWebRtcCandidates();
   const go2rtcConfig = {
     api: {
-      listen: ":1984"
+      listen: ":1984",
+      origin: "*"
     },
     rtsp: {
       listen: ":8554"

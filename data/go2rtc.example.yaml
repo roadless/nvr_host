@@ -1,5 +1,6 @@
 api:
   listen: ":1984"
+  origin: "*"
 rtsp:
   listen: ":8554"
 webrtc:
