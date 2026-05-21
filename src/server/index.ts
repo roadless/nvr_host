@@ -3,8 +3,8 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import express, { type NextFunction, type Request, type Response } from "express";
 import {
+  buildPublicCameras,
   readCameraConfig,
-  toPublicCamera,
   validateCameraConfig,
   writeCameraConfig,
   writeGo2RtcConfig
@@ -73,7 +73,7 @@ app.get("/api/cameras", async (_req, res, next) => {
   try {
     const config = await readCameraConfig();
     res.json({
-      cameras: config.cameras.filter((camera) => camera.enabled).map(toPublicCamera),
+      cameras: buildPublicCameras(config),
       go2rtc: {
         publicPort: publicGo2RtcPort
       }

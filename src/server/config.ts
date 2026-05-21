@@ -17,6 +17,13 @@ export function streamNames(cameraId: string) {
   };
 }
 
+function firstStreamNameForUrl(streamsByUrl: Map<string, string>, streamName: string, rtspUrl: string) {
+  const existingName = streamsByUrl.get(rtspUrl);
+  if (existingName) return existingName;
+  streamsByUrl.set(rtspUrl, streamName);
+  return streamName;
+}
+
 function go2RtcWebRtcCandidates() {
   return (process.env.GO2RTC_WEBRTC_CANDIDATES ?? "")
     .split(",")
@@ -24,13 +31,23 @@ function go2RtcWebRtcCandidates() {
     .filter(Boolean);
 }
 
-export function toPublicCamera(camera: CameraConfig): CameraPublic {
-  return {
-    id: camera.id,
-    name: camera.name,
-    enabled: camera.enabled,
-    streams: streamNames(camera.id)
-  };
+export function buildPublicCameras(config: CameraConfigFile): CameraPublic[] {
+  const streamsByUrl = new Map<string, string>();
+
+  return config.cameras
+    .filter((camera) => camera.enabled)
+    .map((camera) => {
+      const names = streamNames(camera.id);
+      return {
+        id: camera.id,
+        name: camera.name,
+        enabled: camera.enabled,
+        streams: {
+          main: firstStreamNameForUrl(streamsByUrl, names.main, camera.mainRtsp),
+          sub: firstStreamNameForUrl(streamsByUrl, names.sub, camera.subRtsp)
+        }
+      };
+    });
 }
 
 export async function readCameraConfig(): Promise<CameraConfigFile> {
@@ -52,12 +69,15 @@ export async function writeCameraConfig(config: CameraConfigFile): Promise<void>
 
 export async function writeGo2RtcConfig(config: CameraConfigFile): Promise<void> {
   const streams: Record<string, string> = {};
+  const streamsByUrl = new Map<string, string>();
 
   for (const camera of config.cameras) {
     if (!camera.enabled) continue;
     const names = streamNames(camera.id);
-    streams[names.main] = camera.mainRtsp;
-    streams[names.sub] = camera.subRtsp;
+    const mainStreamName = firstStreamNameForUrl(streamsByUrl, names.main, camera.mainRtsp);
+    const subStreamName = firstStreamNameForUrl(streamsByUrl, names.sub, camera.subRtsp);
+    if (mainStreamName === names.main) streams[names.main] = camera.mainRtsp;
+    if (subStreamName === names.sub) streams[names.sub] = camera.subRtsp;
   }
 
   const candidates = go2RtcWebRtcCandidates();

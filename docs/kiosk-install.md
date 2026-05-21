@@ -25,6 +25,8 @@ sudo nvr-kiosk-set-url 'http://192.168.32.154:3000/viewer?profile=kiosk-04&group
 
 `startupDelay=750` starts cameras one by one every 750ms. Started cameras stay live.
 
+If the same RTSP URL is added more than once for testing, the server keeps each camera entry visible but shares one streaming source behind the scenes.
+
 ## Static IP
 
 The installer does not change networking unless all static IP options are provided:

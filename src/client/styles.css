@@ -300,10 +300,11 @@ button {
   display: flex;
   min-width: 0;
   gap: 7px;
-  max-height: 83px;
+  max-height: min(220px, calc(100vh - 160px));
   flex-wrap: wrap;
   align-content: flex-start;
-  overflow: hidden;
+  overflow-x: hidden;
+  overflow-y: auto;
   scrollbar-color: #6a6048 transparent;
 }
 
@@ -682,6 +683,12 @@ button {
     right: 8px;
     bottom: 8px;
     grid-template-columns: 1fr;
+    max-height: calc(100vh - 16px);
+    overflow-y: auto;
+  }
+
+  .camera-strip {
+    max-height: min(240px, calc(100vh - 190px));
   }
 
   .viewer-load-status {
