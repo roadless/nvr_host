@@ -86,13 +86,21 @@ Viewer API'si RTSP adreslerini dondurmez. Viewer yalnizca `cam01_main` ve `cam01
 
 ## Kiosk Viewer
 
-Linux viewer VM icinde Chromium tam ekran:
+Ubuntu Desktop viewer VM icinde tek komutluk kiosk kurulumu:
 
 ```bash
-chromium --kiosk --autoplay-policy=no-user-gesture-required http://HOST_IP:3000/viewer
+curl -fsSL https://raw.githubusercontent.com/roadless/nvr_host/main/scripts/install-kiosk-ubuntu.sh -o install-kiosk-ubuntu.sh
+sudo bash install-kiosk-ubuntu.sh --url http://HOST_IP:3000/viewer
+sudo reboot
 ```
 
-Mouse hareket edince alt menu acilir. Tekli layout main stream, 4/6/9/12/16 layout sub stream kullanir.
+Detayli kiosk dokumani:
+
+```text
+docs/kiosk-install.md
+```
+
+Mouse hareket edince alt menu acilir. Tekli layout main stream, coklu layoutlar sub stream kullanir.
 
 ## Notlar
 

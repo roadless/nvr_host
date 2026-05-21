@@ -39,6 +39,12 @@ http://HOST_IP:3000/admin
 http://HOST_IP:1984
 ```
 
+Viewer-only Ubuntu Desktop kiosk VM setup is documented in:
+
+```text
+docs/kiosk-install.md
+```
+
 ## One Command Update
 
 After you push changes from Windows to Git, SSH into the Linux host and run:
