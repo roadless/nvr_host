@@ -97,7 +97,7 @@ sudo reboot
 Birden fazla kiosk icin viewer URL'sine profil ve grup parametreleri verilebilir:
 
 ```bash
-sudo nvr-kiosk-set-url 'http://HOST_IP:3000/viewer?profile=kiosk-01&group=1&groups=4&maxLive=12&rotate=20'
+sudo nvr-kiosk-set-url 'http://HOST_IP:3000/viewer?profile=kiosk-01&group=1&groups=4&startupDelay=750'
 ```
 
 Detayli kiosk dokumani:

@@ -17,9 +17,7 @@ const layouts: Array<{ size: LayoutSize; label: string; icon: typeof Monitor }> 
 ];
 
 const layoutSizes: LayoutSize[] = layouts.map((layout) => layout.size);
-const defaultMaxLive = 12;
-const defaultRotateSeconds = 20;
-const staggerMs = 250;
+const defaultStartupDelayMs = 750;
 const defaultStateKey = "nvr.viewer.state";
 
 interface CameraApiResponse {
@@ -37,8 +35,7 @@ interface ViewerState {
 interface ViewerOptions {
   profile: string;
   stateKey: string;
-  maxLive: number;
-  rotateSeconds: number;
+  startupDelayMs: number;
   group: number;
   groups: number;
 }
@@ -65,8 +62,7 @@ function readViewerOptions(): ViewerOptions {
   return {
     profile,
     stateKey: profile === "default" ? defaultStateKey : `${defaultStateKey}.${profile}`,
-    maxLive: readIntParam(params, "maxLive", defaultMaxLive, 1, 36),
-    rotateSeconds: readIntParam(params, "rotate", defaultRotateSeconds, 0, 3600),
+    startupDelayMs: readIntParam(params, "startupDelay", defaultStartupDelayMs, 100, 10000),
     group,
     groups
   };
@@ -96,11 +92,6 @@ function getAutoFillCameras(cameras: CameraPublic[], options: ViewerOptions) {
   return cameras.slice(start, start + groupSize);
 }
 
-function getLiveLimit(layout: LayoutSize, maxLive: number) {
-  if (layout <= 12) return layout;
-  return Math.max(1, Math.min(layout, maxLive));
-}
-
 export function ViewerApp() {
   const viewerOptions = useMemo(() => readViewerOptions(), []);
   const initialState = useMemo(() => readStoredState(viewerOptions.stateKey), [viewerOptions.stateKey]);
@@ -112,8 +103,7 @@ export function ViewerApp() {
   const [dragOverSlot, setDragOverSlot] = useState<number | null>(null);
   const [menuVisible, setMenuVisible] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [activeWindow, setActiveWindow] = useState(0);
-  const [readySlotIndexes, setReadySlotIndexes] = useState<Set<number>>(() => new Set());
+  const [startedSlotIndexes, setStartedSlotIndexes] = useState<Set<number>>(() => new Set());
   const hideTimer = useRef<number | null>(null);
 
   const showMenu = useCallback(() => {
@@ -169,47 +159,26 @@ export function ViewerApp() {
     () => slots.map((cameraId, index) => (cameraId ? index : -1)).filter((index) => index >= 0),
     [slots]
   );
-  const liveLimit = getLiveLimit(layout, viewerOptions.maxLive);
-  const liveWindowCount = Math.max(1, Math.ceil(assignedSlotIndexes.length / liveLimit));
-  const activeSlotIndexes = useMemo(
-    () => assignedSlotIndexes.slice(activeWindow * liveLimit, activeWindow * liveLimit + liveLimit),
-    [activeWindow, assignedSlotIndexes, liveLimit]
-  );
-  const activeSlotIndexKey = activeSlotIndexes.join(",");
+  const assignedSlotIndexKey = assignedSlotIndexes.join(",");
 
   useEffect(() => {
-    setActiveWindow(0);
-  }, [layout, selectedIds, viewerOptions.group, viewerOptions.groups]);
-
-  useEffect(() => {
-    if (activeWindow < liveWindowCount) return;
-    setActiveWindow(0);
-  }, [activeWindow, liveWindowCount]);
-
-  useEffect(() => {
-    if (liveWindowCount <= 1 || viewerOptions.rotateSeconds <= 0) return;
-    const timer = window.setInterval(() => {
-      setActiveWindow((current) => (current + 1) % liveWindowCount);
-    }, viewerOptions.rotateSeconds * 1000);
-    return () => window.clearInterval(timer);
-  }, [liveWindowCount, viewerOptions.rotateSeconds]);
-
-  useEffect(() => {
-    setReadySlotIndexes(new Set());
-    const timers = activeSlotIndexes.map((slotIndex, order) =>
+    setStartedSlotIndexes(new Set());
+    const timers = assignedSlotIndexes.map((slotIndex, order) =>
       window.setTimeout(() => {
-        setReadySlotIndexes((current) => {
+        setStartedSlotIndexes((current) => {
           const next = new Set(current);
           next.add(slotIndex);
           return next;
         });
-      }, order * staggerMs)
+      }, order * viewerOptions.startupDelayMs)
     );
 
     return () => {
       timers.forEach((timer) => window.clearTimeout(timer));
     };
-  }, [activeSlotIndexKey, activeSlotIndexes]);
+  }, [assignedSlotIndexKey, assignedSlotIndexes, viewerOptions.startupDelayMs]);
+
+  const nextStartingSlot = assignedSlotIndexes.find((slotIndex) => !startedSlotIndexes.has(slotIndex));
 
   function changeLayout(nextLayout: LayoutSize) {
     setLayout(nextLayout);
@@ -265,10 +234,9 @@ export function ViewerApp() {
         <section className={`video-grid layout-${layout}`} aria-label="Camera grid">
           {slots.map((cameraId, index) => {
             const camera = cameras.find((item) => item.id === cameraId);
-            const isActiveLiveSlot = activeSlotIndexes.includes(index);
-            const isReady = readySlotIndexes.has(index);
-            const streamName = camera && isActiveLiveSlot && isReady ? (layout === 1 ? camera.streams.main : camera.streams.sub) : "";
-            const status = camera ? (isActiveLiveSlot ? (isReady ? "live" : "loading") : "waiting") : "empty";
+            const isStarted = startedSlotIndexes.has(index);
+            const streamName = camera && isStarted ? (layout === 1 ? camera.streams.main : camera.streams.sub) : "";
+            const status = camera ? (isStarted ? "live" : nextStartingSlot === index ? "loading" : "waiting") : "empty";
 
             return (
               <button
@@ -331,11 +299,9 @@ export function ViewerApp() {
 
         <div className="viewer-load-status" aria-label="Live load status">
           <span>
-            Live {activeSlotIndexes.length} / {slots.length}
+            Live {startedSlotIndexes.size} / {assignedSlotIndexes.length || slots.length}
           </span>
-          <span>
-            Group {activeWindow + 1} / {liveWindowCount}
-          </span>
+          {nextStartingSlot !== undefined && <span>Starting {startedSlotIndexes.size + 1} / {assignedSlotIndexes.length}</span>}
           {viewerOptions.profile !== "default" && <span>{viewerOptions.profile}</span>}
         </div>
       </nav>
