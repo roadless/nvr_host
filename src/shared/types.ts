@@ -47,3 +47,31 @@ export interface RestartResponse {
     message: string;
   };
 }
+
+export interface SystemInfoResponse {
+  timestamp: string;
+  host: {
+    hostname: string;
+    platform: string;
+    arch: string;
+    uptimeSeconds: number;
+  };
+  cpu: {
+    usedPercent: number;
+    cores: number;
+    loadAverage: number[];
+  };
+  memory: {
+    totalBytes: number;
+    usedBytes: number;
+    freeBytes: number;
+    usedPercent: number;
+  };
+  process: {
+    uptimeSeconds: number;
+    rssBytes: number;
+    heapUsedBytes: number;
+    heapTotalBytes: number;
+  };
+  go2rtc: HealthResponse["go2rtc"];
+}

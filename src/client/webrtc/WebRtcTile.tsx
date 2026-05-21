@@ -8,7 +8,7 @@ interface Props {
 
 export function WebRtcTile({ cameraName, streamName, go2rtcPort }: Props) {
   const playerUrl = streamName
-    ? `http://${window.location.hostname}:${go2rtcPort}/stream.html?src=${encodeURIComponent(streamName)}&mode=webrtc&media=video`
+    ? `http://${window.location.hostname}:${go2rtcPort}/webrtc.html?src=${encodeURIComponent(streamName)}&media=video`
     : "";
 
   return (

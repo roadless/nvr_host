@@ -10,6 +10,7 @@ import {
   writeGo2RtcConfig
 } from "./config.js";
 import { checkGo2Rtc, restartGo2Rtc } from "./go2rtc.js";
+import { readSystemInfo } from "./system.js";
 
 const app = express();
 const port = Number(process.env.PORT ?? 3000);
@@ -58,6 +59,14 @@ app.get("/api/health", async (_req, res) => {
     ok: go2rtc.ok,
     go2rtc
   });
+});
+
+app.get("/api/system", requireAdmin, async (_req, res, next) => {
+  try {
+    res.json(await readSystemInfo());
+  } catch (error) {
+    next(error);
+  }
 });
 
 app.get("/api/cameras", async (_req, res, next) => {
@@ -109,7 +118,7 @@ app.post("/api/restart/go2rtc", requireAdmin, async (_req, res, next) => {
   }
 });
 
-app.get("/admin", requireAdmin, (_req, res) => {
+app.get(["/admin", "/info"], requireAdmin, (_req, res) => {
   res.sendFile(indexHtml);
 });
 
