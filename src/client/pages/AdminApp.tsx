@@ -1,12 +1,12 @@
 import { useEffect, useState } from "react";
-import { Plus, Save, Trash2, RefreshCcw } from "lucide-react";
-import type { CameraConfig, CameraConfigFile, HealthResponse, RestartResponse } from "../../shared/types";
+import { Plus, RefreshCcw, Save, Trash2 } from "lucide-react";
+import type { CameraConfig, CameraConfigFile, HealthResponse } from "../../shared/types";
 
 function blankCamera(index: number): CameraConfig {
   const number = String(index).padStart(2, "0");
   return {
     id: `cam${number}`,
-    name: `Kamera ${number}`,
+    name: `Camera ${number}`,
     enabled: true,
     mainRtsp: "rtsp://user:password@192.168.1.100:554/main",
     subRtsp: "rtsp://user:password@192.168.1.100:554/sub"
@@ -23,7 +23,7 @@ export function AdminApp() {
   async function loadConfig() {
     setMessage("");
     const response = await fetch("/api/config");
-    if (!response.ok) throw new Error(`Config alınamadı: HTTP ${response.status}`);
+    if (!response.ok) throw new Error(`Configuration could not be loaded: ${response.status}`);
     setConfig((await response.json()) as CameraConfigFile);
   }
 
@@ -33,7 +33,7 @@ export function AdminApp() {
   }
 
   useEffect(() => {
-    void loadConfig().catch((error) => setMessage(error instanceof Error ? error.message : "Config alınamadı."));
+    void loadConfig().catch((error) => setMessage(error instanceof Error ? error.message : "Configuration could not be loaded."));
     void loadHealth();
   }, []);
 
@@ -66,30 +66,28 @@ export function AdminApp() {
         },
         body: JSON.stringify(config)
       });
-      const body = await response.json();
-      if (!response.ok) throw new Error(body.error ?? `Kaydetme başarısız: HTTP ${response.status}`);
-      setMessage(body.restart?.message ?? "Kaydedildi.");
+      if (!response.ok) throw new Error(`Save failed: ${response.status}`);
+      setMessage("Saved.");
       await loadHealth();
     } catch (error) {
-      setMessage(error instanceof Error ? error.message : "Kaydetme başarısız.");
+      setMessage(error instanceof Error ? error.message : "Save failed.");
     } finally {
       setSaving(false);
     }
   }
 
-  async function restartGo2Rtc() {
+  async function restartStreaming() {
     setRestarting(true);
     setMessage("");
     try {
       const response = await fetch("/api/restart/go2rtc", {
         method: "POST"
       });
-      const body = (await response.json()) as RestartResponse;
-      if (!response.ok) throw new Error(body.restart?.message ?? `Restart başarısız: HTTP ${response.status}`);
-      setMessage(body.restart.message);
+      if (!response.ok) throw new Error(`Restart failed: ${response.status}`);
+      setMessage("Streaming service restarted.");
       await loadHealth();
     } catch (error) {
-      setMessage(error instanceof Error ? error.message : "Restart başarısız.");
+      setMessage(error instanceof Error ? error.message : "Restart failed.");
     } finally {
       setRestarting(false);
     }
@@ -99,37 +97,37 @@ export function AdminApp() {
     <main className="admin-shell">
       <header className="admin-toolbar">
         <div>
-          <h1>NVR Admin</h1>
-          <p>{config.cameras.length} kamera tanımlı</p>
+          <h1>Camera Server</h1>
+          <p>{config.cameras.length} cameras configured</p>
         </div>
         <div className="toolbar-actions">
           <span className={health?.go2rtc.ok ? "status-pill ok" : "status-pill warn"}>
-            go2rtc {health?.go2rtc.ok ? "aktif" : "kontrol edilemiyor"}
+            Streaming {health?.go2rtc.ok ? "active" : "unavailable"}
           </span>
           <button className="icon-text-button" onClick={() => void loadConfig()}>
             <RefreshCcw size={18} />
-            Yenile
+            Refresh
           </button>
-          <button className="icon-text-button" disabled={restarting} onClick={() => void restartGo2Rtc()}>
+          <button className="icon-text-button" disabled={restarting} onClick={() => void restartStreaming()}>
             <RefreshCcw size={18} />
-            {restarting ? "Restart ediliyor" : "go2rtc Restart"}
+            {restarting ? "Restarting" : "Restart Streaming"}
           </button>
           <button className="icon-text-button primary" disabled={saving || restarting} onClick={() => void save()}>
             <Save size={18} />
-            {saving ? "Kaydediliyor" : "Kaydet"}
+            {saving ? "Saving" : "Save"}
           </button>
         </div>
       </header>
 
       {message && <div className="admin-message">{message}</div>}
 
-      <section className="camera-table" aria-label="Kamera ayarları">
+      <section className="camera-table" aria-label="Camera settings">
         <div className="table-head">
-          <span>Aktif</span>
+          <span>Enabled</span>
           <span>ID</span>
-          <span>Ad</span>
-          <span>Main RTSP</span>
-          <span>Sub RTSP</span>
+          <span>Name</span>
+          <span>Main Stream</span>
+          <span>Sub Stream</span>
           <span />
         </div>
         {config.cameras.map((camera, index) => (
@@ -145,7 +143,7 @@ export function AdminApp() {
             <input value={camera.name} onChange={(event) => updateCamera(index, { name: event.target.value })} />
             <input value={camera.mainRtsp} onChange={(event) => updateCamera(index, { mainRtsp: event.target.value })} />
             <input value={camera.subRtsp} onChange={(event) => updateCamera(index, { subRtsp: event.target.value })} />
-            <button className="icon-button danger" onClick={() => removeCamera(index)} title="Sil" type="button">
+            <button className="icon-button danger" onClick={() => removeCamera(index)} title="Delete" type="button">
               <Trash2 size={18} />
             </button>
           </div>
@@ -154,7 +152,7 @@ export function AdminApp() {
 
       <button className="add-camera" onClick={addCamera} type="button">
         <Plus size={18} />
-        Kamera ekle
+        Add camera
       </button>
     </main>
   );

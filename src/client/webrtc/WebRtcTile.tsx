@@ -21,7 +21,7 @@ export function WebRtcTile({ animationKey, cameraName, streamName, go2rtcPort }:
       {!streamName && (
         <div className="tile-status">
           <VideoOff size={24} />
-          <span>Bos</span>
+          <span>Empty</span>
         </div>
       )}
     </div>

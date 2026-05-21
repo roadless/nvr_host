@@ -21,9 +21,9 @@ function formatDuration(seconds: number) {
   const hours = Math.floor((seconds % 86400) / 3600);
   const minutes = Math.floor((seconds % 3600) / 60);
 
-  if (days > 0) return `${days}g ${hours}s`;
-  if (hours > 0) return `${hours}s ${minutes}d`;
-  return `${minutes}d`;
+  if (days > 0) return `${days}d ${hours}h`;
+  if (hours > 0) return `${hours}h ${minutes}m`;
+  return `${minutes}m`;
 }
 
 function Gauge({ label, value, tone }: { label: string; value: number; tone: "cpu" | "memory" }) {
@@ -71,11 +71,11 @@ export function InfoApp() {
   async function loadSystemInfo() {
     try {
       const response = await fetch("/api/system");
-      if (!response.ok) throw new Error(`Sistem bilgisi alınamadı: HTTP ${response.status}`);
+      if (!response.ok) throw new Error(`System information could not be loaded: ${response.status}`);
       setSystem((await response.json()) as SystemInfoResponse);
       setError(null);
     } catch (loadError) {
-      setError(loadError instanceof Error ? loadError.message : "Sistem bilgisi alınamadı.");
+      setError(loadError instanceof Error ? loadError.message : "System information could not be loaded.");
     }
   }
 
@@ -87,7 +87,7 @@ export function InfoApp() {
 
   const updatedAt = useMemo(() => {
     if (!system) return "-";
-    return new Intl.DateTimeFormat("tr-TR", {
+    return new Intl.DateTimeFormat("en-US", {
       hour: "2-digit",
       minute: "2-digit",
       second: "2-digit"
@@ -98,25 +98,25 @@ export function InfoApp() {
     <main className="info-shell">
       <header className="info-header">
         <div>
-          <h1>NVR Sistem Durumu</h1>
-          <p>{system ? `${system.host.hostname} · ${system.host.platform}/${system.host.arch}` : "Yükleniyor"}</p>
+          <h1>Camera Server</h1>
+          <p>{system ? `${system.host.hostname} - ${system.host.platform}/${system.host.arch}` : "Loading"}</p>
         </div>
         <button className="icon-text-button" onClick={() => void loadSystemInfo()} type="button">
           <RefreshCcw size={18} />
-          Yenile
+          Refresh
         </button>
       </header>
 
       {error && <div className="info-error">{error}</div>}
 
-      <section className="metric-overview" aria-label="Sistem kullanım özeti">
-        <Gauge label="CPU Kullanımı" tone="cpu" value={system?.cpu.usedPercent ?? 0} />
-        <Gauge label="RAM Kullanımı" tone="memory" value={system?.memory.usedPercent ?? 0} />
+      <section className="metric-overview" aria-label="System usage summary">
+        <Gauge label="CPU Usage" tone="cpu" value={system?.cpu.usedPercent ?? 0} />
+        <Gauge label="Memory Usage" tone="memory" value={system?.memory.usedPercent ?? 0} />
       </section>
 
-      <section className="info-grid" aria-label="Sistem detayları">
+      <section className="info-grid" aria-label="System details">
         <InfoCard
-          detail={`${system?.cpu.cores ?? 0} çekirdek · load ${system?.cpu.loadAverage.join(" / ") ?? "-"}`}
+          detail={`${system?.cpu.cores ?? 0} cores - load ${system?.cpu.loadAverage.join(" / ") ?? "-"}`}
           icon={Cpu}
           label="CPU"
           value={`${system?.cpu.usedPercent.toFixed(1) ?? "0.0"}%`}
@@ -124,26 +124,26 @@ export function InfoApp() {
         <InfoCard
           detail={`${formatBytes(system?.memory.usedBytes ?? 0)} / ${formatBytes(system?.memory.totalBytes ?? 0)}`}
           icon={HardDrive}
-          label="RAM"
+          label="Memory"
           value={`${system?.memory.usedPercent.toFixed(1) ?? "0.0"}%`}
         />
         <InfoCard
-          detail={`RSS ${formatBytes(system?.process.rssBytes ?? 0)} · heap ${formatBytes(system?.process.heapUsedBytes ?? 0)}`}
+          detail={`Using ${formatBytes(system?.process.rssBytes ?? 0)} - working set ${formatBytes(system?.process.heapUsedBytes ?? 0)}`}
           icon={Server}
-          label="Node Process"
+          label="Application"
           value={formatDuration(system?.process.uptimeSeconds ?? 0)}
         />
         <InfoCard
-          detail={system?.go2rtc.error ?? `HTTP ${system?.go2rtc.status ?? "-"}`}
+          detail={system?.go2rtc.ok ? "Ready for camera playback" : "No response"}
           icon={Video}
-          label="go2rtc"
-          value={system?.go2rtc.ok ? "Aktif" : "Kontrol edilemiyor"}
+          label="Streaming Service"
+          value={system?.go2rtc.ok ? "Active" : "Unavailable"}
         />
       </section>
 
       <footer className="info-footer">
-        <span>Host uptime: {formatDuration(system?.host.uptimeSeconds ?? 0)}</span>
-        <span>Son güncelleme: {updatedAt}</span>
+        <span>Server uptime: {formatDuration(system?.host.uptimeSeconds ?? 0)}</span>
+        <span>Last updated: {updatedAt}</span>
       </footer>
     </main>
   );

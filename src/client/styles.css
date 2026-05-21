@@ -15,7 +15,7 @@ body {
   margin: 0;
   min-width: 320px;
   min-height: 100vh;
-  overflow: hidden;
+  overflow: auto;
 }
 
 button,
@@ -319,7 +319,7 @@ button {
 .admin-shell {
   min-height: 100vh;
   padding: 24px;
-  overflow: auto;
+  overflow: visible;
   background: #f4f1e8;
   color: #20201c;
 }
@@ -479,7 +479,7 @@ button {
 
 .info-shell {
   min-height: 100vh;
-  height: 100vh;
+  height: auto;
   overflow: auto;
   padding: 24px;
   background:

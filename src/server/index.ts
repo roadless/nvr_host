@@ -34,7 +34,7 @@ function timingSafeEqual(a: string, b: string) {
 function requireAdmin(req: Request, res: Response, next: NextFunction) {
   const header = req.headers.authorization;
   if (!header?.startsWith("Basic ")) {
-    res.setHeader("WWW-Authenticate", 'Basic realm="NVR Admin"');
+    res.setHeader("WWW-Authenticate", 'Basic realm="Camera Server"');
     res.status(401).send("Authentication required.");
     return;
   }
@@ -45,7 +45,7 @@ function requireAdmin(req: Request, res: Response, next: NextFunction) {
   const password = separator >= 0 ? decoded.slice(separator + 1) : "";
 
   if (!timingSafeEqual(user, adminUser) || !timingSafeEqual(password, adminPassword)) {
-    res.setHeader("WWW-Authenticate", 'Basic realm="NVR Admin"');
+    res.setHeader("WWW-Authenticate", 'Basic realm="Camera Server"');
     res.status(401).send("Invalid credentials.");
     return;
   }

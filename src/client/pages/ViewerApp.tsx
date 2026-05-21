@@ -77,12 +77,12 @@ export function ViewerApp() {
     setError(null);
     try {
       const response = await fetch("/api/cameras");
-      if (!response.ok) throw new Error(`Kamera listesi alınamadı: HTTP ${response.status}`);
+      if (!response.ok) throw new Error(`Camera list could not be loaded: ${response.status}`);
       const data = (await response.json()) as CameraApiResponse;
       setCameras(data.cameras);
       setGo2rtcPort(data.go2rtc.publicPort || "1984");
     } catch (loadError) {
-      setError(loadError instanceof Error ? loadError.message : "Kamera listesi alınamadı.");
+      setError(loadError instanceof Error ? loadError.message : "Camera list could not be loaded.");
     }
   }, []);
 
@@ -154,11 +154,11 @@ export function ViewerApp() {
           <p>{error}</p>
           <button className="icon-text-button" onClick={() => void loadCameras()}>
             <RefreshCcw size={18} />
-            Yenile
+            Refresh
           </button>
         </div>
       ) : (
-        <section className={`video-grid layout-${layout}`} aria-label="Kamera görüntüleri">
+        <section className={`video-grid layout-${layout}`} aria-label="Camera grid">
           {slots.map((cameraId, index) => {
             const camera = cameras.find((item) => item.id === cameraId);
             const streamName = camera ? (layout === 1 ? camera.streams.main : camera.streams.sub) : "";
@@ -189,13 +189,13 @@ export function ViewerApp() {
       )}
 
       <nav className={`bottom-menu ${menuVisible ? "visible" : ""}`} aria-label="Viewer controls">
-        <div className="layout-controls" aria-label="Grid düzeni">
+        <div className="layout-controls" aria-label="Grid layout">
           {layouts.map(({ size, label, icon: Icon }) => (
             <button
               className={layout === size ? "control-button selected" : "control-button"}
               key={size}
               onClick={() => changeLayout(size)}
-              title={`${label} kamera`}
+              title={`${label} ${size === 1 ? "camera" : "cameras"}`}
               type="button"
             >
               <Icon size={18} />
@@ -204,7 +204,7 @@ export function ViewerApp() {
           ))}
         </div>
 
-        <div className="camera-strip" aria-label="Kamera seçimi">
+        <div className="camera-strip" aria-label="Camera selection">
           {cameras.map((camera) => (
             <button
               className={slots[activeSlot] === camera.id ? "camera-chip selected" : "camera-chip"}
