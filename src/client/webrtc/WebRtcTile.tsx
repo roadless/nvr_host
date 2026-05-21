@@ -15,7 +15,7 @@ export function WebRtcTile({ animationKey, cameraName, streamName, go2rtcPort }:
   return (
     <div className="video-tile">
       <div className="tile-media" key={animationKey}>
-        {playerUrl && <iframe allow="autoplay; fullscreen" src={playerUrl} title={cameraName} />}
+        {playerUrl && <iframe allow="autoplay; fullscreen" scrolling="no" src={playerUrl} title={cameraName} />}
       </div>
       <div className="tile-label">{cameraName}</div>
       {!streamName && (
