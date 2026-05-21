@@ -1,4 +1,4 @@
-export type LayoutSize = 1 | 4 | 6 | 9 | 12 | 16;
+export type LayoutSize = 1 | 4 | 6 | 9 | 12 | 16 | 24 | 28 | 32 | 36;
 
 export interface CameraConfig {
   id: string;

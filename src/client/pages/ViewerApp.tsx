@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { type DragEvent, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Grid2X2, Grid3X3, Monitor, RefreshCcw, Rows3, Rows4 } from "lucide-react";
 import type { CameraPublic, LayoutSize } from "../../shared/types";
 import { WebRtcTile } from "../webrtc/WebRtcTile";
@@ -9,8 +9,14 @@ const layouts: Array<{ size: LayoutSize; label: string; icon: typeof Monitor }> 
   { size: 6, label: "6", icon: Rows3 },
   { size: 9, label: "9", icon: Grid3X3 },
   { size: 12, label: "12", icon: Rows4 },
-  { size: 16, label: "16", icon: Rows4 }
+  { size: 16, label: "16", icon: Rows4 },
+  { size: 24, label: "24", icon: Rows4 },
+  { size: 28, label: "28", icon: Rows4 },
+  { size: 32, label: "32", icon: Rows4 },
+  { size: 36, label: "36", icon: Grid3X3 }
 ];
+
+const layoutSizes: LayoutSize[] = layouts.map((layout) => layout.size);
 
 interface CameraApiResponse {
   cameras: CameraPublic[];
@@ -31,7 +37,7 @@ function readStoredState(): ViewerState {
     const raw = localStorage.getItem(stateKey);
     if (!raw) return { layout: 4, selectedIds: [] };
     const parsed = JSON.parse(raw) as ViewerState;
-    if (![1, 4, 6, 9, 12, 16].includes(parsed.layout)) {
+    if (!layoutSizes.includes(parsed.layout)) {
       return { layout: 4, selectedIds: [] };
     }
     return {
@@ -49,6 +55,7 @@ export function ViewerApp() {
   const [layout, setLayout] = useState<LayoutSize>(() => readStoredState().layout);
   const [selectedIds, setSelectedIds] = useState<string[]>(() => readStoredState().selectedIds);
   const [activeSlot, setActiveSlot] = useState(0);
+  const [dragOverSlot, setDragOverSlot] = useState<number | null>(null);
   const [menuVisible, setMenuVisible] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const hideTimer = useRef<number | null>(null);
@@ -117,6 +124,29 @@ export function ViewerApp() {
     });
   }
 
+  function assignCameraToSlot(cameraId: string, slotIndex: number) {
+    setSelectedIds((current) => {
+      const next = [...slots];
+      next[slotIndex] = cameraId;
+      return next.length ? next : current;
+    });
+    setActiveSlot(slotIndex);
+  }
+
+  function handleCameraDragStart(event: DragEvent<HTMLButtonElement>, cameraId: string) {
+    event.dataTransfer.effectAllowed = "copy";
+    event.dataTransfer.setData("text/plain", cameraId);
+    event.dataTransfer.setData("application/x-nvr-camera-id", cameraId);
+  }
+
+  function handleSlotDrop(event: DragEvent<HTMLButtonElement>, slotIndex: number) {
+    event.preventDefault();
+    const cameraId = event.dataTransfer.getData("application/x-nvr-camera-id") || event.dataTransfer.getData("text/plain");
+    setDragOverSlot(null);
+    if (!cameraId || !cameras.some((camera) => camera.id === cameraId)) return;
+    assignCameraToSlot(cameraId, slotIndex);
+  }
+
   return (
     <main className="viewer-shell" onMouseMove={showMenu}>
       {error ? (
@@ -134,12 +164,20 @@ export function ViewerApp() {
             const streamName = camera ? (layout === 1 ? camera.streams.main : camera.streams.sub) : "";
             return (
               <button
-                className={`tile-button ${activeSlot === index ? "active" : ""}`}
+                className={`tile-button ${activeSlot === index ? "active" : ""} ${dragOverSlot === index ? "drop-target" : ""}`}
                 key={`${index}-${cameraId || "empty"}`}
                 onClick={() => setActiveSlot(index)}
+                onDragLeave={() => setDragOverSlot((current) => (current === index ? null : current))}
+                onDragOver={(event) => {
+                  event.preventDefault();
+                  event.dataTransfer.dropEffect = "copy";
+                  setDragOverSlot(index);
+                }}
+                onDrop={(event) => handleSlotDrop(event, index)}
                 type="button"
               >
                 <WebRtcTile
+                  animationKey={`${index}-${streamName || "empty"}`}
                   cameraName={camera?.name ?? `Slot ${index + 1}`}
                   go2rtcPort={go2rtcPort}
                   streamName={streamName}
@@ -170,8 +208,10 @@ export function ViewerApp() {
           {cameras.map((camera) => (
             <button
               className={slots[activeSlot] === camera.id ? "camera-chip selected" : "camera-chip"}
+              draggable
               key={camera.id}
               onClick={() => assignCamera(camera.id)}
+              onDragStart={(event) => handleCameraDragStart(event, camera.id)}
               title={camera.name}
               type="button"
             >

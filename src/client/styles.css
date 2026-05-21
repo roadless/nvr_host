@@ -74,6 +74,26 @@ button {
   grid-template-rows: repeat(4, minmax(0, 1fr));
 }
 
+.layout-24 {
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  grid-template-rows: repeat(4, minmax(0, 1fr));
+}
+
+.layout-28 {
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  grid-template-rows: repeat(4, minmax(0, 1fr));
+}
+
+.layout-32 {
+  grid-template-columns: repeat(8, minmax(0, 1fr));
+  grid-template-rows: repeat(4, minmax(0, 1fr));
+}
+
+.layout-36 {
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  grid-template-rows: repeat(6, minmax(0, 1fr));
+}
+
 .tile-button {
   position: relative;
   min-width: 0;
@@ -93,6 +113,12 @@ button {
   outline-color: rgb(230 184 74 / 45%);
 }
 
+.tile-button.drop-target {
+  border-color: #6ed6c3;
+  outline-color: rgb(110 214 195 / 70%);
+  box-shadow: inset 0 0 0 2px rgb(110 214 195 / 42%);
+}
+
 .video-tile {
   position: relative;
   width: 100%;
@@ -101,6 +127,12 @@ button {
   background:
     linear-gradient(135deg, rgb(255 255 255 / 4%), transparent 34%),
     #10100e;
+}
+
+.tile-media {
+  width: 100%;
+  height: 100%;
+  animation: tileFadeIn 180ms ease-out;
 }
 
 .video-tile video {
@@ -116,6 +148,18 @@ button {
   border: 0;
   background: #050504;
   pointer-events: none;
+}
+
+@keyframes tileFadeIn {
+  from {
+    opacity: 0.35;
+    transform: scale(0.985);
+  }
+
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
 }
 
 .tile-label {
@@ -194,6 +238,7 @@ button {
 
 .layout-controls {
   display: flex;
+  flex-wrap: wrap;
   gap: 6px;
 }
 
@@ -227,18 +272,25 @@ button {
   display: flex;
   min-width: 0;
   gap: 7px;
-  overflow-x: auto;
+  max-height: 83px;
+  flex-wrap: wrap;
+  align-content: flex-start;
+  overflow: hidden;
   scrollbar-color: #6a6048 transparent;
 }
 
 .camera-chip {
-  flex: 0 0 auto;
+  flex: 0 1 150px;
   max-width: 150px;
   height: 38px;
   padding: 0 10px;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.camera-chip:active {
+  cursor: grabbing;
 }
 
 .viewer-message {
@@ -568,7 +620,11 @@ button {
   }
 
   .layout-12,
-  .layout-16 {
+  .layout-16,
+  .layout-24,
+  .layout-28,
+  .layout-32,
+  .layout-36 {
     grid-template-columns: repeat(3, minmax(0, 1fr));
   }
 
