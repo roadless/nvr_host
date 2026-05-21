@@ -45,6 +45,12 @@ go2rtc Web UI:
 http://HOST_IP:1984
 ```
 
+WebRTC yayin acilmazsa `.env` icinde host IP adayini tanimla:
+
+```env
+GO2RTC_WEBRTC_CANDIDATES=HOST_IP:8555
+```
+
 ## Tek Komut Guncelleme
 
 Ilk kurulum scripti `/usr/local/bin/nvr-update` komutunu olusturur. Sonraki guncellemelerde:

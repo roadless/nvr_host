@@ -11,6 +11,7 @@ services:
       GO2RTC_CONFIG_PATH: /app/data/go2rtc.yaml
       GO2RTC_BASE_URL: http://go2rtc:1984
       GO2RTC_PUBLIC_PORT: "1984"
+      GO2RTC_WEBRTC_CANDIDATES: ${GO2RTC_WEBRTC_CANDIDATES:-}
       GO2RTC_CONTAINER_NAME: nvr-go2rtc
     ports:
       - "3000:3000"

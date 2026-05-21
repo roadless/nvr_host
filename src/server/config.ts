@@ -17,6 +17,13 @@ export function streamNames(cameraId: string) {
   };
 }
 
+function go2RtcWebRtcCandidates() {
+  return (process.env.GO2RTC_WEBRTC_CANDIDATES ?? "")
+    .split(",")
+    .map((candidate) => candidate.trim())
+    .filter(Boolean);
+}
+
 export function toPublicCamera(camera: CameraConfig): CameraPublic {
   return {
     id: camera.id,
@@ -53,6 +60,7 @@ export async function writeGo2RtcConfig(config: CameraConfigFile): Promise<void>
     streams[names.sub] = camera.subRtsp;
   }
 
+  const candidates = go2RtcWebRtcCandidates();
   const go2rtcConfig = {
     api: {
       listen: ":1984"
@@ -61,7 +69,8 @@ export async function writeGo2RtcConfig(config: CameraConfigFile): Promise<void>
       listen: ":8554"
     },
     webrtc: {
-      listen: ":8555"
+      listen: ":8555",
+      ...(candidates.length ? { candidates } : {})
     },
     streams
   };
