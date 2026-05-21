@@ -1,16 +1,18 @@
-import { VideoOff } from "lucide-react";
+import { LoaderCircle, VideoOff } from "lucide-react";
 
 interface Props {
   animationKey: string;
   cameraName: string;
   streamName: string;
   go2rtcPort: string;
+  status: "empty" | "loading" | "waiting" | "live";
 }
 
-export function WebRtcTile({ animationKey, cameraName, streamName, go2rtcPort }: Props) {
-  const playerUrl = streamName
+export function WebRtcTile({ animationKey, cameraName, streamName, go2rtcPort, status }: Props) {
+  const playerUrl = status === "live" && streamName
     ? `http://${window.location.hostname}:${go2rtcPort}/webrtc.html?src=${encodeURIComponent(streamName)}&media=video`
     : "";
+  const showStatus = status !== "live";
 
   return (
     <div className="video-tile">
@@ -18,10 +20,10 @@ export function WebRtcTile({ animationKey, cameraName, streamName, go2rtcPort }:
         {playerUrl && <iframe allow="autoplay; fullscreen" scrolling="no" src={playerUrl} title={cameraName} />}
       </div>
       <div className="tile-label">{cameraName}</div>
-      {!streamName && (
-        <div className="tile-status">
-          <VideoOff size={24} />
-          <span>Empty</span>
+      {showStatus && (
+        <div className={`tile-status ${status}`}>
+          {status === "loading" ? <LoaderCircle className="spin" size={24} /> : <VideoOff size={24} />}
+          <span>{status === "loading" ? "Loading" : status === "waiting" ? "Waiting" : "Empty"}</span>
         </div>
       )}
     </div>

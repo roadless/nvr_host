@@ -12,6 +12,19 @@ sudo reboot
 
 After reboot, Ubuntu should auto-login as the `kiosk` user and open the viewer.
 
+## Viewer Load Profiles
+
+For multiple kiosk screens, give each kiosk its own profile and camera group. Quote URLs that contain `&`:
+
+```bash
+sudo nvr-kiosk-set-url 'http://192.168.32.154:3000/viewer?profile=kiosk-01&group=1&groups=4&maxLive=12&rotate=20'
+sudo nvr-kiosk-set-url 'http://192.168.32.154:3000/viewer?profile=kiosk-02&group=2&groups=4&maxLive=12&rotate=20'
+sudo nvr-kiosk-set-url 'http://192.168.32.154:3000/viewer?profile=kiosk-03&group=3&groups=4&maxLive=12&rotate=20'
+sudo nvr-kiosk-set-url 'http://192.168.32.154:3000/viewer?profile=kiosk-04&group=4&groups=4&maxLive=12&rotate=20'
+```
+
+`maxLive=12` limits how many streams play at the same time. `rotate=20` changes the active live group every 20 seconds.
+
 ## Static IP
 
 The installer does not change networking unless all static IP options are provided:
