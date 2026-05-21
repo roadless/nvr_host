@@ -23,8 +23,7 @@ export function WebRtcTile({ cameraName, streamName, go2rtcPort }: Props) {
 
     let closed = false;
     const pc = new RTCPeerConnection();
-    const wsProtocol = window.location.protocol === "https:" ? "wss:" : "ws:";
-    const ws = new WebSocket(`${wsProtocol}//${window.location.hostname}:${go2rtcPort}/api/ws?src=${encodeURIComponent(streamName)}`);
+    const ws = new WebSocket(`ws://${window.location.hostname}:${go2rtcPort}/api/ws?src=${encodeURIComponent(streamName)}`);
 
     setStatus("connecting");
     pc.addTransceiver("video", { direction: "recvonly" });

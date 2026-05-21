@@ -31,4 +31,3 @@ services:
       - "8555:8555/udp"
     volumes:
       - ./data/go2rtc.yaml:/config/go2rtc.yaml
-    command: ["-config", "/config/go2rtc.yaml"]
