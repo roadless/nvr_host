@@ -106,6 +106,31 @@ Detayli kiosk dokumani:
 docs/kiosk-install.md
 ```
 
+Windows PC'den SSH ile birden fazla Ubuntu kiosk client yonetmek, Chrome kiosk kurmak ve DHCP/static IP ayari yapmak icin:
+
+```powershell
+python -m pip install -r tools\requirements-kiosk-manager.txt
+python tools\kiosk_manager.py
+```
+
+Portable Windows exe uretmek icin:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File tools\build-kiosk-manager.ps1
+```
+
+Exe ciktisi:
+
+```text
+dist/NVRKioskManager-1.0.4.exe
+```
+
+Detayli yonetim araci dokumani:
+
+```text
+docs/kiosk-manager.md
+```
+
 Mouse hareket edince alt menu acilir. Tekli layout main stream, coklu layoutlar sub stream kullanir.
 
 ## Notlar

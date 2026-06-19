@@ -29,14 +29,18 @@ button {
 
 .viewer-shell {
   position: relative;
+  display: grid;
   width: 100vw;
   height: 100vh;
   background: #090908;
   overflow: hidden;
+  --viewer-menu-inline-size: min(360px, 42vw);
+  --viewer-menu-block-size: min(270px, 38vh);
 }
 
 .video-grid {
   display: grid;
+  grid-area: grid;
   width: 100%;
   height: 100%;
   min-width: 0;
@@ -237,10 +241,9 @@ button {
 }
 
 .bottom-menu {
-  position: absolute;
-  left: 16px;
-  right: 16px;
-  bottom: 16px;
+  grid-area: menu;
+  min-width: 0;
+  min-height: 0;
   display: grid;
   grid-template-columns: auto minmax(0, 1fr) auto;
   gap: 12px;
@@ -251,7 +254,7 @@ button {
   background: rgb(22 22 18 / 92%);
   box-shadow: 0 18px 40px rgb(0 0 0 / 42%);
   opacity: 0;
-  transform: translateY(16px);
+  overflow: hidden;
   transition:
     opacity 160ms ease,
     transform 160ms ease;
@@ -262,6 +265,88 @@ button {
   opacity: 1;
   transform: translateY(0);
   pointer-events: auto;
+}
+
+.viewer-shell.menu-right {
+  grid-template-areas: "grid menu";
+  grid-template-columns: minmax(0, 1fr) 0;
+}
+
+.viewer-shell.menu-right.menu-open {
+  grid-template-columns: minmax(0, 1fr) var(--viewer-menu-inline-size);
+}
+
+.viewer-shell.menu-left {
+  grid-template-areas: "menu grid";
+  grid-template-columns: 0 minmax(0, 1fr);
+}
+
+.viewer-shell.menu-left.menu-open {
+  grid-template-columns: var(--viewer-menu-inline-size) minmax(0, 1fr);
+}
+
+.viewer-shell.menu-bottom {
+  grid-template-areas:
+    "grid"
+    "menu";
+  grid-template-rows: minmax(0, 1fr) 0;
+}
+
+.viewer-shell.menu-bottom.menu-open {
+  grid-template-rows: minmax(0, 1fr) var(--viewer-menu-block-size);
+}
+
+.viewer-shell.menu-top {
+  grid-template-areas:
+    "menu"
+    "grid";
+  grid-template-rows: 0 minmax(0, 1fr);
+}
+
+.viewer-shell.menu-top.menu-open {
+  grid-template-rows: var(--viewer-menu-block-size) minmax(0, 1fr);
+}
+
+.viewer-shell.menu-right .bottom-menu,
+.viewer-shell.menu-left .bottom-menu {
+  height: 100%;
+  grid-template-columns: 1fr;
+  align-content: start;
+  border-top: 0;
+  border-bottom: 0;
+  border-radius: 0;
+}
+
+.viewer-shell.menu-right .bottom-menu {
+  transform: translateX(100%);
+}
+
+.viewer-shell.menu-left .bottom-menu {
+  transform: translateX(-100%);
+}
+
+.viewer-shell.menu-bottom .bottom-menu,
+.viewer-shell.menu-top .bottom-menu {
+  width: 100%;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  border-right: 0;
+  border-left: 0;
+  border-radius: 0;
+}
+
+.viewer-shell.menu-bottom .bottom-menu {
+  transform: translateY(100%);
+}
+
+.viewer-shell.menu-top .bottom-menu {
+  transform: translateY(-100%);
+}
+
+.viewer-shell.menu-right .bottom-menu.visible,
+.viewer-shell.menu-left .bottom-menu.visible,
+.viewer-shell.menu-bottom .bottom-menu.visible,
+.viewer-shell.menu-top .bottom-menu.visible {
+  transform: translate(0, 0);
 }
 
 .layout-controls {
@@ -306,6 +391,11 @@ button {
   overflow-x: hidden;
   overflow-y: auto;
   scrollbar-color: #6a6048 transparent;
+}
+
+.viewer-shell.menu-right .camera-strip,
+.viewer-shell.menu-left .camera-strip {
+  max-height: calc(100vh - 138px);
 }
 
 .camera-chip {
@@ -434,6 +524,33 @@ button {
   border-radius: 6px;
   background: #fff7dc;
   color: #4b3a08;
+}
+
+.viewer-settings {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 14px;
+  padding: 10px 12px;
+  border: 1px solid #d8d2c3;
+  border-radius: 8px;
+  background: #ffffff;
+}
+
+.viewer-settings label {
+  color: #5a5548;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.viewer-settings select {
+  min-width: 150px;
+  height: 36px;
+  border: 1px solid #d8d2c3;
+  border-radius: 6px;
+  padding: 0 9px;
+  color: #20201c;
+  background: #fffdfa;
 }
 
 .camera-table {
@@ -679,12 +796,13 @@ button {
   }
 
   .bottom-menu {
-    left: 8px;
-    right: 8px;
-    bottom: 8px;
     grid-template-columns: 1fr;
-    max-height: calc(100vh - 16px);
     overflow-y: auto;
+  }
+
+  .viewer-shell {
+    --viewer-menu-inline-size: min(320px, 72vw);
+    --viewer-menu-block-size: min(300px, 44vh);
   }
 
   .camera-strip {
@@ -702,6 +820,12 @@ button {
 
   .admin-shell {
     padding: 16px;
+  }
+
+  .viewer-settings {
+    display: flex;
+    align-items: flex-start;
+    flex-direction: column;
   }
 
   .admin-toolbar {

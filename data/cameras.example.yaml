@@ -1,3 +1,5 @@
+viewer:
+  menuPosition: right
 cameras:
   - id: cam01
     name: Kamera 01

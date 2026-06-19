@@ -1,9 +1,13 @@
 import fs from "node:fs/promises";
 import path from "node:path";
 import yaml from "js-yaml";
-import type { CameraConfig, CameraConfigFile, CameraPublic } from "../shared/types.js";
+import type { CameraConfig, CameraConfigFile, CameraPublic, ViewerMenuPosition } from "../shared/types.js";
 
 const ID_PATTERN = /^[a-zA-Z0-9_-]+$/;
+const viewerMenuPositions = new Set<ViewerMenuPosition>(["bottom", "top", "right", "left"]);
+const defaultViewerConfig: CameraConfigFile["viewer"] = {
+  menuPosition: "right"
+};
 
 export const paths = {
   cameraConfig: process.env.CAMERA_CONFIG_PATH ?? path.resolve("data/cameras.yaml"),
@@ -110,6 +114,19 @@ export function validateCameraConfig(input: unknown): CameraConfigFile {
     throw new Error("Config must contain a cameras array.");
   }
 
+  const rawViewer = (input as Partial<CameraConfigFile>).viewer;
+  const viewer = { ...defaultViewerConfig };
+  if (rawViewer !== undefined) {
+    if (!rawViewer || typeof rawViewer !== "object") {
+      throw new Error("viewer must be an object.");
+    }
+    const menuPosition = String(rawViewer.menuPosition ?? defaultViewerConfig.menuPosition);
+    if (!viewerMenuPositions.has(menuPosition as ViewerMenuPosition)) {
+      throw new Error("viewer.menuPosition must be one of: bottom, top, right, left.");
+    }
+    viewer.menuPosition = menuPosition as ViewerMenuPosition;
+  }
+
   const ids = new Set<string>();
   const cameras = (input as CameraConfigFile).cameras.map((camera, index) => {
     if (!camera || typeof camera !== "object") {
@@ -144,5 +161,5 @@ export function validateCameraConfig(input: unknown): CameraConfigFile {
     return normalized;
   });
 
-  return { cameras };
+  return { viewer, cameras };
 }

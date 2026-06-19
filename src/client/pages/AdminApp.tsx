@@ -1,6 +1,17 @@
 import { useEffect, useState } from "react";
 import { Plus, RefreshCcw, Save, Trash2 } from "lucide-react";
-import type { CameraConfig, CameraConfigFile, HealthResponse } from "../../shared/types";
+import type { CameraConfig, CameraConfigFile, HealthResponse, ViewerMenuPosition } from "../../shared/types";
+
+const defaultViewerConfig: CameraConfigFile["viewer"] = {
+  menuPosition: "right"
+};
+
+const menuPositionOptions: Array<{ value: ViewerMenuPosition; label: string }> = [
+  { value: "bottom", label: "Bottom" },
+  { value: "top", label: "Top" },
+  { value: "right", label: "Right" },
+  { value: "left", label: "Left" }
+];
 
 function blankCamera(index: number): CameraConfig {
   const number = String(index).padStart(2, "0");
@@ -14,7 +25,7 @@ function blankCamera(index: number): CameraConfig {
 }
 
 export function AdminApp() {
-  const [config, setConfig] = useState<CameraConfigFile>({ cameras: [] });
+  const [config, setConfig] = useState<CameraConfigFile>({ viewer: defaultViewerConfig, cameras: [] });
   const [health, setHealth] = useState<HealthResponse | null>(null);
   const [message, setMessage] = useState("");
   const [saving, setSaving] = useState(false);
@@ -39,19 +50,32 @@ export function AdminApp() {
 
   function updateCamera(index: number, patch: Partial<CameraConfig>) {
     setConfig((current) => ({
+      viewer: current.viewer,
       cameras: current.cameras.map((camera, cameraIndex) => (cameraIndex === index ? { ...camera, ...patch } : camera))
     }));
   }
 
   function addCamera() {
     setConfig((current) => ({
+      viewer: current.viewer,
       cameras: [...current.cameras, blankCamera(current.cameras.length + 1)]
     }));
   }
 
   function removeCamera(index: number) {
     setConfig((current) => ({
+      viewer: current.viewer,
       cameras: current.cameras.filter((_, cameraIndex) => cameraIndex !== index)
+    }));
+  }
+
+  function updateViewerMenuPosition(menuPosition: ViewerMenuPosition) {
+    setConfig((current) => ({
+      ...current,
+      viewer: {
+        ...current.viewer,
+        menuPosition
+      }
     }));
   }
 
@@ -120,6 +144,21 @@ export function AdminApp() {
       </header>
 
       {message && <div className="admin-message">{message}</div>}
+
+      <section className="viewer-settings" aria-label="Viewer settings">
+        <label htmlFor="viewer-menu-position">Viewer Menu Position</label>
+        <select
+          id="viewer-menu-position"
+          onChange={(event) => updateViewerMenuPosition(event.target.value as ViewerMenuPosition)}
+          value={config.viewer.menuPosition}
+        >
+          {menuPositionOptions.map((option) => (
+            <option key={option.value} value={option.value}>
+              {option.label}
+            </option>
+          ))}
+        </select>
+      </section>
 
       <section className="camera-table" aria-label="Camera settings">
         <div className="table-head">

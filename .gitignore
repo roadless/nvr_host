@@ -1,5 +1,9 @@
 node_modules/
 dist/
+build/
+*.spec
 .env
 data/cameras.yaml
 data/go2rtc.yaml
+__pycache__/
+tools/kiosk-manager-version.txt

@@ -1,6 +1,6 @@
 import { type DragEvent, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Grid2X2, Grid3X3, Monitor, RefreshCcw, Rows3, Rows4 } from "lucide-react";
-import type { CameraPublic, LayoutSize } from "../../shared/types";
+import type { CameraPublic, LayoutSize, ViewerMenuPosition } from "../../shared/types";
 import { WebRtcTile } from "../webrtc/WebRtcTile";
 
 const layouts: Array<{ size: LayoutSize; label: string; icon: typeof Monitor }> = [
@@ -17,11 +17,13 @@ const layouts: Array<{ size: LayoutSize; label: string; icon: typeof Monitor }> 
 ];
 
 const layoutSizes: LayoutSize[] = layouts.map((layout) => layout.size);
-const defaultStartupDelayMs = 750;
 const defaultStateKey = "nvr.viewer.state";
 
 interface CameraApiResponse {
   cameras: CameraPublic[];
+  viewer: {
+    menuPosition: ViewerMenuPosition;
+  };
   go2rtc: {
     publicPort: string;
   };
@@ -35,7 +37,6 @@ interface ViewerState {
 interface ViewerOptions {
   profile: string;
   stateKey: string;
-  startupDelayMs: number;
   group: number;
   groups: number;
 }
@@ -62,7 +63,6 @@ function readViewerOptions(): ViewerOptions {
   return {
     profile,
     stateKey: profile === "default" ? defaultStateKey : `${defaultStateKey}.${profile}`,
-    startupDelayMs: readIntParam(params, "startupDelay", defaultStartupDelayMs, 100, 10000),
     group,
     groups
   };
@@ -97,13 +97,13 @@ export function ViewerApp() {
   const initialState = useMemo(() => readStoredState(viewerOptions.stateKey), [viewerOptions.stateKey]);
   const [cameras, setCameras] = useState<CameraPublic[]>([]);
   const [go2rtcPort, setGo2rtcPort] = useState("1984");
+  const [menuPosition, setMenuPosition] = useState<ViewerMenuPosition>("right");
   const [layout, setLayout] = useState<LayoutSize>(() => initialState.layout);
   const [selectedIds, setSelectedIds] = useState<string[]>(() => initialState.selectedIds);
   const [activeSlot, setActiveSlot] = useState(0);
   const [dragOverSlot, setDragOverSlot] = useState<number | null>(null);
   const [menuVisible, setMenuVisible] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [startedSlotIndexes, setStartedSlotIndexes] = useState<Set<number>>(() => new Set());
   const hideTimer = useRef<number | null>(null);
 
   const showMenu = useCallback(() => {
@@ -126,6 +126,7 @@ export function ViewerApp() {
       if (!response.ok) throw new Error(`Camera list could not be loaded: ${response.status}`);
       const data = (await response.json()) as CameraApiResponse;
       setCameras(data.cameras);
+      setMenuPosition(data.viewer?.menuPosition ?? "right");
       setGo2rtcPort(data.go2rtc.publicPort || "1984");
     } catch (loadError) {
       setError(loadError instanceof Error ? loadError.message : "Camera list could not be loaded.");
@@ -155,30 +156,7 @@ export function ViewerApp() {
     localStorage.setItem(viewerOptions.stateKey, JSON.stringify({ layout, selectedIds: slots }));
   }, [layout, selectedIds, slots, viewerOptions.stateKey]);
 
-  const assignedSlotIndexes = useMemo(
-    () => slots.map((cameraId, index) => (cameraId ? index : -1)).filter((index) => index >= 0),
-    [slots]
-  );
-  const assignedSlotIndexKey = assignedSlotIndexes.join(",");
-
-  useEffect(() => {
-    setStartedSlotIndexes(new Set());
-    const timers = assignedSlotIndexes.map((slotIndex, order) =>
-      window.setTimeout(() => {
-        setStartedSlotIndexes((current) => {
-          const next = new Set(current);
-          next.add(slotIndex);
-          return next;
-        });
-      }, order * viewerOptions.startupDelayMs)
-    );
-
-    return () => {
-      timers.forEach((timer) => window.clearTimeout(timer));
-    };
-  }, [assignedSlotIndexKey, assignedSlotIndexes, viewerOptions.startupDelayMs]);
-
-  const nextStartingSlot = assignedSlotIndexes.find((slotIndex) => !startedSlotIndexes.has(slotIndex));
+  const liveSlotCount = useMemo(() => slots.filter(Boolean).length, [slots]);
 
   function changeLayout(nextLayout: LayoutSize) {
     setLayout(nextLayout);
@@ -221,7 +199,7 @@ export function ViewerApp() {
   }
 
   return (
-    <main className="viewer-shell" onMouseMove={showMenu}>
+    <main className={`viewer-shell menu-${menuPosition} ${menuVisible ? "menu-open" : ""}`} onMouseMove={showMenu}>
       {error ? (
         <div className="viewer-message">
           <p>{error}</p>
@@ -234,14 +212,13 @@ export function ViewerApp() {
         <section className={`video-grid layout-${layout}`} aria-label="Camera grid">
           {slots.map((cameraId, index) => {
             const camera = cameras.find((item) => item.id === cameraId);
-            const isStarted = startedSlotIndexes.has(index);
-            const streamName = camera && isStarted ? (layout === 1 ? camera.streams.main : camera.streams.sub) : "";
-            const status = camera ? (isStarted ? "live" : nextStartingSlot === index ? "loading" : "waiting") : "empty";
+            const streamName = camera ? (layout === 1 ? camera.streams.main : camera.streams.sub) : "";
+            const status = camera ? "live" : "empty";
 
             return (
               <button
                 className={`tile-button ${activeSlot === index ? "active" : ""} ${dragOverSlot === index ? "drop-target" : ""}`}
-                key={`${index}-${cameraId || "empty"}`}
+                key={index}
                 onClick={() => setActiveSlot(index)}
                 onDragLeave={() => setDragOverSlot((current) => (current === index ? null : current))}
                 onDragOver={(event) => {
@@ -253,7 +230,7 @@ export function ViewerApp() {
                 type="button"
               >
                 <WebRtcTile
-                  animationKey={`${index}-${streamName || status}`}
+                  animationKey={streamName || status}
                   cameraName={camera?.name ?? `Slot ${index + 1}`}
                   go2rtcPort={go2rtcPort}
                   status={status}
@@ -299,9 +276,8 @@ export function ViewerApp() {
 
         <div className="viewer-load-status" aria-label="Live load status">
           <span>
-            Live {startedSlotIndexes.size} / {assignedSlotIndexes.length || slots.length}
+            Live {liveSlotCount} / {slots.length}
           </span>
-          {nextStartingSlot !== undefined && <span>Starting {startedSlotIndexes.size + 1} / {assignedSlotIndexes.length}</span>}
           {viewerOptions.profile !== "default" && <span>{viewerOptions.profile}</span>}
         </div>
       </nav>

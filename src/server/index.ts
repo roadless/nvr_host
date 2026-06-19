@@ -74,6 +74,7 @@ app.get("/api/cameras", async (_req, res, next) => {
     const config = await readCameraConfig();
     res.json({
       cameras: buildPublicCameras(config),
+      viewer: config.viewer,
       go2rtc: {
         publicPort: publicGo2RtcPort
       }
