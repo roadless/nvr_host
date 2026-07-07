@@ -1,9 +1,10 @@
 import { useEffect, useState } from "react";
 import { Plus, RefreshCcw, Save, Trash2 } from "lucide-react";
-import type { CameraConfig, CameraConfigFile, HealthResponse, ViewerMenuPosition } from "../../shared/types";
+import type { CameraConfig, CameraConfigFile, HealthResponse, PlaybackMode, ViewerMenuPosition } from "../../shared/types";
 
 const defaultViewerConfig: CameraConfigFile["viewer"] = {
-  menuPosition: "right"
+  menuPosition: "right",
+  playbackMode: "webrtc"
 };
 
 const menuPositionOptions: Array<{ value: ViewerMenuPosition; label: string }> = [
@@ -11,6 +12,12 @@ const menuPositionOptions: Array<{ value: ViewerMenuPosition; label: string }> =
   { value: "top", label: "Top" },
   { value: "right", label: "Right" },
   { value: "left", label: "Left" }
+];
+
+const playbackModeOptions: Array<{ value: PlaybackMode; label: string }> = [
+  { value: "auto", label: "Auto" },
+  { value: "webrtc", label: "WebRTC" },
+  { value: "mse", label: "MSE" }
 ];
 
 function blankCamera(index: number): CameraConfig {
@@ -50,21 +57,31 @@ export function AdminApp() {
 
   function updateCamera(index: number, patch: Partial<CameraConfig>) {
     setConfig((current) => ({
-      viewer: current.viewer,
+      ...current,
       cameras: current.cameras.map((camera, cameraIndex) => (cameraIndex === index ? { ...camera, ...patch } : camera))
+    }));
+  }
+
+  function updatePlaybackMode(playbackMode: PlaybackMode) {
+    setConfig((current) => ({
+      ...current,
+      viewer: {
+        ...current.viewer,
+        playbackMode
+      }
     }));
   }
 
   function addCamera() {
     setConfig((current) => ({
-      viewer: current.viewer,
+      ...current,
       cameras: [...current.cameras, blankCamera(current.cameras.length + 1)]
     }));
   }
 
   function removeCamera(index: number) {
     setConfig((current) => ({
-      viewer: current.viewer,
+      ...current,
       cameras: current.cameras.filter((_, cameraIndex) => cameraIndex !== index)
     }));
   }
@@ -146,18 +163,35 @@ export function AdminApp() {
       {message && <div className="admin-message">{message}</div>}
 
       <section className="viewer-settings" aria-label="Viewer settings">
-        <label htmlFor="viewer-menu-position">Viewer Menu Position</label>
-        <select
-          id="viewer-menu-position"
-          onChange={(event) => updateViewerMenuPosition(event.target.value as ViewerMenuPosition)}
-          value={config.viewer.menuPosition}
-        >
-          {menuPositionOptions.map((option) => (
-            <option key={option.value} value={option.value}>
-              {option.label}
-            </option>
-          ))}
-        </select>
+        <div className="viewer-setting-field">
+          <label htmlFor="viewer-menu-position">Viewer Menu Position</label>
+          <select
+            id="viewer-menu-position"
+            onChange={(event) => updateViewerMenuPosition(event.target.value as ViewerMenuPosition)}
+            value={config.viewer.menuPosition}
+          >
+            {menuPositionOptions.map((option) => (
+              <option key={option.value} value={option.value}>
+                {option.label}
+              </option>
+            ))}
+          </select>
+        </div>
+        <div className="viewer-setting-field">
+          <span>Viewer playback</span>
+          <div className="segmented-control">
+            {playbackModeOptions.map((option) => (
+              <button
+                className={config.viewer.playbackMode === option.value ? "selected" : ""}
+                key={option.value}
+                onClick={() => updatePlaybackMode(option.value)}
+                type="button"
+              >
+                {option.label}
+              </button>
+            ))}
+          </div>
+        </div>
       </section>
 
       <section className="camera-table" aria-label="Camera settings">

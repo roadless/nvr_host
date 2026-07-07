@@ -1,5 +1,6 @@
 viewer:
   menuPosition: right
+  playbackMode: webrtc
 cameras:
   - id: cam01
     name: Kamera 01

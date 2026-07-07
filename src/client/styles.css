@@ -527,23 +527,32 @@ button {
 }
 
 .viewer-settings {
-  display: inline-flex;
+  display: flex;
   align-items: center;
-  gap: 10px;
+  flex-wrap: wrap;
+  gap: 14px;
   margin-bottom: 14px;
-  padding: 10px 12px;
+  max-width: 520px;
+  padding: 12px;
   border: 1px solid #d8d2c3;
   border-radius: 8px;
   background: #ffffff;
 }
 
-.viewer-settings label {
+.viewer-setting-field {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.viewer-setting-field label,
+.viewer-setting-field > span {
   color: #5a5548;
   font-size: 13px;
   font-weight: 700;
 }
 
-.viewer-settings select {
+.viewer-setting-field select {
   min-width: 150px;
   height: 36px;
   border: 1px solid #d8d2c3;
@@ -551,6 +560,33 @@ button {
   padding: 0 9px;
   color: #20201c;
   background: #fffdfa;
+}
+
+.segmented-control {
+  display: inline-flex;
+  overflow: hidden;
+  border: 1px solid #cfc7b6;
+  border-radius: 7px;
+  background: #f8f5ed;
+}
+
+.segmented-control button {
+  min-width: 82px;
+  height: 36px;
+  border: 0;
+  border-left: 1px solid #cfc7b6;
+  background: transparent;
+  color: #514b3e;
+  font-weight: 700;
+}
+
+.segmented-control button:first-child {
+  border-left: 0;
+}
+
+.segmented-control button.selected {
+  background: #0f6b50;
+  color: #ffffff;
 }
 
 .camera-table {
@@ -829,6 +865,12 @@ button {
   }
 
   .admin-toolbar {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .viewer-settings {
+    max-width: none;
     align-items: flex-start;
     flex-direction: column;
   }

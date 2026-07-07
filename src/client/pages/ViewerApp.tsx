@@ -1,7 +1,7 @@
 import { type DragEvent, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Grid2X2, Grid3X3, Monitor, RefreshCcw, Rows3, Rows4 } from "lucide-react";
-import type { CameraPublic, LayoutSize, ViewerMenuPosition } from "../../shared/types";
-import { WebRtcTile } from "../webrtc/WebRtcTile";
+import type { CameraPublic, LayoutSize, PlaybackMode, ViewerMenuPosition } from "../../shared/types";
+import { StreamTile } from "../webrtc/StreamTile";
 
 const layouts: Array<{ size: LayoutSize; label: string; icon: typeof Monitor }> = [
   { size: 1, label: "1", icon: Monitor },
@@ -26,6 +26,7 @@ interface CameraApiResponse {
   };
   go2rtc: {
     publicPort: string;
+    playbackMode: PlaybackMode;
   };
 }
 
@@ -98,6 +99,7 @@ export function ViewerApp() {
   const [cameras, setCameras] = useState<CameraPublic[]>([]);
   const [go2rtcPort, setGo2rtcPort] = useState("1984");
   const [menuPosition, setMenuPosition] = useState<ViewerMenuPosition>("right");
+  const [playbackMode, setPlaybackMode] = useState<PlaybackMode>("webrtc");
   const [layout, setLayout] = useState<LayoutSize>(() => initialState.layout);
   const [selectedIds, setSelectedIds] = useState<string[]>(() => initialState.selectedIds);
   const [activeSlot, setActiveSlot] = useState(0);
@@ -128,6 +130,7 @@ export function ViewerApp() {
       setCameras(data.cameras);
       setMenuPosition(data.viewer?.menuPosition ?? "right");
       setGo2rtcPort(data.go2rtc.publicPort || "1984");
+      setPlaybackMode(data.go2rtc.playbackMode || "webrtc");
     } catch (loadError) {
       setError(loadError instanceof Error ? loadError.message : "Camera list could not be loaded.");
     }
@@ -229,10 +232,11 @@ export function ViewerApp() {
                 onDrop={(event) => handleSlotDrop(event, index)}
                 type="button"
               >
-                <WebRtcTile
-                  animationKey={streamName || status}
+                <StreamTile
+                  animationKey={`${index}-${streamName || status}`}
                   cameraName={camera?.name ?? `Slot ${index + 1}`}
                   go2rtcPort={go2rtcPort}
+                  playbackMode={playbackMode}
                   status={status}
                   streamName={streamName}
                 />
@@ -278,6 +282,7 @@ export function ViewerApp() {
           <span>
             Live {liveSlotCount} / {slots.length}
           </span>
+          <span>{playbackMode.toUpperCase()}</span>
           {viewerOptions.profile !== "default" && <span>{viewerOptions.profile}</span>}
         </div>
       </nav>

@@ -1,17 +1,32 @@
 import { LoaderCircle, VideoOff } from "lucide-react";
+import type { PlaybackMode } from "../../shared/types";
 
 interface Props {
   animationKey: string;
   cameraName: string;
   streamName: string;
   go2rtcPort: string;
+  playbackMode: PlaybackMode;
   status: "empty" | "loading" | "waiting" | "live";
 }
 
-export function WebRtcTile({ animationKey, cameraName, streamName, go2rtcPort, status }: Props) {
-  const playerUrl = status === "live" && streamName
-    ? `http://${window.location.hostname}:${go2rtcPort}/webrtc.html?src=${encodeURIComponent(streamName)}&media=video`
-    : "";
+function buildPlayerUrl(streamName: string, go2rtcPort: string, playbackMode: PlaybackMode) {
+  const baseUrl = `http://${window.location.hostname}:${go2rtcPort}`;
+  const src = encodeURIComponent(streamName);
+
+  if (playbackMode === "mse") {
+    return `${baseUrl}/stream.html?src=${src}&mode=mse`;
+  }
+
+  if (playbackMode === "auto") {
+    return `${baseUrl}/stream.html?src=${src}&mode=webrtc,webrtc/tcp,mse`;
+  }
+
+  return `${baseUrl}/webrtc.html?src=${src}&media=video`;
+}
+
+export function StreamTile({ animationKey, cameraName, streamName, go2rtcPort, playbackMode, status }: Props) {
+  const playerUrl = status === "live" && streamName ? buildPlayerUrl(streamName, go2rtcPort, playbackMode) : "";
   const showStatus = status !== "live";
 
   return (

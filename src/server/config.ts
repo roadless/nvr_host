@@ -1,12 +1,14 @@
 import fs from "node:fs/promises";
 import path from "node:path";
 import yaml from "js-yaml";
-import type { CameraConfig, CameraConfigFile, CameraPublic, ViewerMenuPosition } from "../shared/types.js";
+import type { CameraConfig, CameraConfigFile, CameraPublic, PlaybackMode, ViewerMenuPosition } from "../shared/types.js";
 
 const ID_PATTERN = /^[a-zA-Z0-9_-]+$/;
 const viewerMenuPositions = new Set<ViewerMenuPosition>(["bottom", "top", "right", "left"]);
+const playbackModes = new Set<PlaybackMode>(["auto", "webrtc", "mse"]);
 const defaultViewerConfig: CameraConfigFile["viewer"] = {
-  menuPosition: "right"
+  menuPosition: "right",
+  playbackMode: "webrtc"
 };
 
 export const paths = {
@@ -125,6 +127,11 @@ export function validateCameraConfig(input: unknown): CameraConfigFile {
       throw new Error("viewer.menuPosition must be one of: bottom, top, right, left.");
     }
     viewer.menuPosition = menuPosition as ViewerMenuPosition;
+    const playbackMode = String(rawViewer.playbackMode ?? defaultViewerConfig.playbackMode);
+    if (!playbackModes.has(playbackMode as PlaybackMode)) {
+      throw new Error("viewer.playbackMode must be one of: auto, webrtc, mse.");
+    }
+    viewer.playbackMode = playbackMode as PlaybackMode;
   }
 
   const ids = new Set<string>();

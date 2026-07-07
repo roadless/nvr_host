@@ -76,7 +76,8 @@ app.get("/api/cameras", async (_req, res, next) => {
       cameras: buildPublicCameras(config),
       viewer: config.viewer,
       go2rtc: {
-        publicPort: publicGo2RtcPort
+        publicPort: publicGo2RtcPort,
+        playbackMode: config.viewer.playbackMode
       }
     });
   } catch (error) {

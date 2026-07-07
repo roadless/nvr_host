@@ -1,5 +1,6 @@
 export type LayoutSize = 1 | 4 | 6 | 9 | 12 | 16 | 24 | 28 | 32 | 36;
 export type ViewerMenuPosition = "bottom" | "top" | "right" | "left";
+export type PlaybackMode = "auto" | "webrtc" | "mse";
 
 export interface CameraConfig {
   id: string;
@@ -22,6 +23,7 @@ export interface CameraPublic {
 export interface CameraConfigFile {
   viewer: {
     menuPosition: ViewerMenuPosition;
+    playbackMode: PlaybackMode;
   };
   cameras: CameraConfig[];
 }
