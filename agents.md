@@ -38,7 +38,7 @@ git status --short
 
 ## Linux Deploy Akisi
 
-Onerilen kurulum ve guncelleme yontemi SSH + Git + Docker Compose.
+Onerilen kurulum ve guncelleme yontemi SSH ile Linux hosta baglanip public GitHub HTTPS + Git + Docker Compose kullanmaktir.
 
 Ilk kurulum:
 
@@ -46,9 +46,9 @@ Ilk kurulum:
 sudo rm -rf /opt/nvr_host
 sudo mkdir -p /opt/nvr_host
 sudo chown -R $USER:$USER /opt/nvr_host
-git clone git@github.com-nvr:roadless/nvr_host.git /opt/nvr_host
+git clone https://github.com/roadless/nvr_host.git /opt/nvr_host
 cd /opt/nvr_host
-bash scripts/install-linux.sh git@github.com-nvr:roadless/nvr_host.git
+bash scripts/install-linux.sh
 ```
 
 Kurulumdan sonra:

@@ -1,14 +1,9 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-REPO_URL="${1:-${REPO_URL:-}}"
+DEFAULT_REPO_URL="https://github.com/roadless/nvr_host.git"
+REPO_URL="${1:-${REPO_URL:-$DEFAULT_REPO_URL}}"
 APP_DIR="${APP_DIR:-/opt/nvr_host}"
-
-if [ -z "$REPO_URL" ]; then
-  echo "Usage: $0 <git-repo-url>"
-  echo "Example: $0 git@github.com:USER/nvr_host.git"
-  exit 1
-fi
 
 if ! command -v sudo >/dev/null 2>&1; then
   echo "sudo is required."
@@ -57,6 +52,10 @@ sudo chown -R "$USER:$USER" "$APP_DIR"
 if [ -d "$APP_DIR/.git" ]; then
   git -C "$APP_DIR" pull --ff-only
 else
+  if [ -d "$APP_DIR" ] && [ -n "$(find "$APP_DIR" -mindepth 1 -maxdepth 1 -print -quit)" ]; then
+    echo "$APP_DIR exists but is not a git repository. Move or remove it before installing."
+    exit 1
+  fi
   git clone "$REPO_URL" "$APP_DIR"
 fi
 

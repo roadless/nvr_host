@@ -10,17 +10,17 @@ SSH into the Ubuntu/Debian host:
 ssh user@HOST_IP
 ```
 
-Run the installer with your private repository URL:
+Run the installer:
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/YOUR_USER/YOUR_REPO/main/scripts/install-linux.sh -o install-linux.sh
-bash install-linux.sh git@github.com:YOUR_USER/YOUR_REPO.git
+curl -fsSL https://raw.githubusercontent.com/roadless/nvr_host/main/scripts/install-linux.sh -o install-linux.sh
+bash install-linux.sh
 ```
 
 If you copied the repo manually first, run from the project directory instead:
 
 ```bash
-bash scripts/install-linux.sh git@github.com:YOUR_USER/YOUR_REPO.git
+bash scripts/install-linux.sh
 ```
 
 Then edit secrets and camera URLs:
