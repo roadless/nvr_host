@@ -3,12 +3,31 @@ viewer:
   playbackMode: mse
 cameras:
   - id: cam01
-    name: Kamera 01
+    name: Camera 01
     enabled: true
     mainRtsp: rtsp://user:password@192.168.1.101:554/stream1
     subRtsp: rtsp://user:password@192.168.1.101:554/stream2
+    ptz:
+      enabled: false
+      protocol: onvif
+      host: 192.168.1.101
+      port: 80
+      username: user
+      password: password
+      profileToken: ""
+      presets: []
   - id: cam02
-    name: Kamera 02
+    name: Camera 02
     enabled: true
     mainRtsp: rtsp://user:password@192.168.1.102:554/stream1
     subRtsp: rtsp://user:password@192.168.1.102:554/stream2
+    ptz:
+      enabled: false
+      protocol: onvif
+      host: 192.168.1.102
+      port: 80
+      username: user
+      password: password
+      profileToken: ""
+      presets: []
+ptzScenes: []

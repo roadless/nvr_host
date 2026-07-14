@@ -162,7 +162,7 @@ async function restartViaGo2RtcApi(): Promise<{ ok: boolean; method: "go2rtc-api
       return {
         ok: false,
         method: "go2rtc-api",
-        message: `go2rtc API restart HTTP ${response.status} döndü.`
+        message: `The go2rtc API restart returned HTTP ${response.status}.`
       };
     }
 
@@ -170,13 +170,13 @@ async function restartViaGo2RtcApi(): Promise<{ ok: boolean; method: "go2rtc-api
     return {
       ok: cameBack,
       method: "go2rtc-api",
-      message: cameBack ? "go2rtc API üzerinden yeniden başlatıldı." : "go2rtc API restart aldı ama sağlık kontrolü dönmedi."
+      message: cameBack ? "go2rtc restarted through its API." : "go2rtc accepted the API restart but did not pass the health check."
     };
   } catch (error) {
     return {
       ok: false,
       method: "go2rtc-api",
-      message: `go2rtc API restart çalışmadı: ${error instanceof Error ? error.message : "bilinmeyen hata"}`
+      message: `The go2rtc API restart failed: ${error instanceof Error ? error.message : "unknown error"}`
     };
   }
 }
@@ -197,13 +197,13 @@ async function restartViaDockerSocket(): Promise<{ ok: boolean; method: "docker-
         response.resume();
         response.on("end", () => {
           if (response.statusCode && response.statusCode >= 200 && response.statusCode < 300) {
-            resolve({ ok: true, method: "docker-socket", message: "go2rtc Docker socket üzerinden yeniden başlatıldı." });
+            resolve({ ok: true, method: "docker-socket", message: "go2rtc restarted through the Docker socket." });
             return;
           }
           resolve({
             ok: false,
             method: "docker-socket",
-            message: `Docker restart HTTP ${response.statusCode ?? "bilinmeyen"} döndü.`
+            message: `The Docker restart returned HTTP ${response.statusCode ?? "unknown"}.`
           });
         });
       }
@@ -211,19 +211,19 @@ async function restartViaDockerSocket(): Promise<{ ok: boolean; method: "docker-
 
     request.on("timeout", () => {
       request.destroy();
-      resolve({ ok: false, method: "docker-socket", message: "Docker socket restart zaman aşımına uğradı." });
+      resolve({ ok: false, method: "docker-socket", message: "The Docker socket restart timed out." });
     });
 
     request.on("error", (error) => {
       const code = (error as NodeJS.ErrnoException).code;
       const hint =
         code === "ENOENT"
-          ? ` ${DOCKER_SOCKET_PATH} yok. Docker Compose ile çalıştırırken docker.sock volume mount edilmeli; npm start ile yerelde çalışırken bu beklenen bir durumdur.`
+          ? ` ${DOCKER_SOCKET_PATH} does not exist. Mount docker.sock when running with Docker Compose; this is expected during a local npm start.`
           : "";
       resolve({
         ok: false,
         method: "docker-socket",
-        message: `go2rtc Docker socket üzerinden yeniden başlatılamadı: ${error.message}.${hint}`
+        message: `go2rtc could not be restarted through the Docker socket: ${error.message}.${hint}`
       });
     });
 
@@ -243,15 +243,15 @@ async function restartViaDockerCli(): Promise<{ ok: boolean; method: "docker-cli
       ok: cameBack,
       method: "docker-cli",
       message: cameBack
-        ? "go2rtc Docker CLI ile yeniden başlatıldı."
-        : "Docker CLI restart çalıştı ama go2rtc sağlık kontrolü dönmedi."
+        ? "go2rtc restarted through the Docker CLI."
+        : "The Docker CLI restart completed but go2rtc did not pass the health check."
     };
   } catch (error) {
-    const message = error instanceof Error ? error.message : "bilinmeyen hata";
+    const message = error instanceof Error ? error.message : "unknown error";
     return {
       ok: false,
       method: "docker-cli",
-      message: `Docker CLI restart çalışmadı: ${message}`
+      message: `The Docker CLI restart failed: ${message}`
     };
   }
 }
@@ -273,6 +273,6 @@ export async function restartGo2Rtc(): Promise<{
   return {
     ok: false,
     method: "none",
-    message: `${apiRestart.message} Docker socket fallback de başarısız: ${dockerRestart.message} Docker CLI fallback de başarısız: ${dockerCliRestart.message}`
+    message: `${apiRestart.message} Docker socket fallback failed: ${dockerRestart.message} Docker CLI fallback failed: ${dockerCliRestart.message}`
   };
 }

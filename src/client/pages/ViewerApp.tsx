@@ -1,6 +1,6 @@
 import { type DragEvent, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Grid2X2, Grid3X3, Monitor, RefreshCcw, Rows3, Rows4 } from "lucide-react";
-import type { CameraPublic, LayoutSize, PlaybackMode, ViewerMenuPosition } from "../../shared/types";
+import type { CameraPublic, LayoutSize, PlaybackMode, PtzCommandResponse, PtzScenePublic, ViewerCameraResponse, ViewerMenuPosition } from "../../shared/types";
 import { StreamTile } from "../webrtc/StreamTile";
 
 const layouts: Array<{ size: LayoutSize; label: string; icon: typeof Monitor }> = [
@@ -19,17 +19,6 @@ const layouts: Array<{ size: LayoutSize; label: string; icon: typeof Monitor }> 
 const layoutSizes: LayoutSize[] = layouts.map((layout) => layout.size);
 const defaultStateKey = "nvr.viewer.state";
 
-interface CameraApiResponse {
-  cameras: CameraPublic[];
-  viewer: {
-    menuPosition: ViewerMenuPosition;
-  };
-  go2rtc: {
-    publicPort: string;
-    playbackMode: PlaybackMode;
-  };
-}
-
 interface ViewerState {
   layout: LayoutSize;
   selectedIds: string[];
@@ -40,6 +29,7 @@ interface ViewerOptions {
   stateKey: string;
   group: number;
   groups: number;
+  ptzToken: string;
 }
 
 function readIntParam(params: URLSearchParams, name: string, fallback: number, min: number, max: number) {
@@ -65,7 +55,8 @@ function readViewerOptions(): ViewerOptions {
     profile,
     stateKey: profile === "default" ? defaultStateKey : `${defaultStateKey}.${profile}`,
     group,
-    groups
+    groups,
+    ptzToken: params.get("ptzToken") ?? ""
   };
 }
 
@@ -106,6 +97,10 @@ export function ViewerApp() {
   const [dragOverSlot, setDragOverSlot] = useState<number | null>(null);
   const [menuVisible, setMenuVisible] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [ptzAuthorized, setPtzAuthorized] = useState(false);
+  const [ptzScenes, setPtzScenes] = useState<PtzScenePublic[]>([]);
+  const [ptzBusy, setPtzBusy] = useState<string | null>(null);
+  const [notification, setNotification] = useState("");
   const hideTimer = useRef<number | null>(null);
 
   const showMenu = useCallback(() => {
@@ -124,17 +119,21 @@ export function ViewerApp() {
   const loadCameras = useCallback(async () => {
     setError(null);
     try {
-      const response = await fetch("/api/cameras");
+      const response = await fetch("/api/cameras", {
+        headers: viewerOptions.ptzToken ? { "X-PTZ-Token": viewerOptions.ptzToken } : undefined
+      });
       if (!response.ok) throw new Error(`Camera list could not be loaded: ${response.status}`);
-      const data = (await response.json()) as CameraApiResponse;
+      const data = (await response.json()) as ViewerCameraResponse;
       setCameras(data.cameras);
       setMenuPosition(data.viewer?.menuPosition ?? "right");
       setGo2rtcPort(data.go2rtc.publicPort || "1984");
       setPlaybackMode(data.go2rtc.playbackMode || "mse");
+      setPtzAuthorized(data.ptzAuthorized);
+      setPtzScenes(data.ptzScenes);
     } catch (loadError) {
       setError(loadError instanceof Error ? loadError.message : "Camera list could not be loaded.");
     }
-  }, []);
+  }, [viewerOptions.ptzToken]);
 
   useEffect(() => {
     void loadCameras();
@@ -200,6 +199,31 @@ export function ViewerApp() {
     if (!cameraId || !cameras.some((camera) => camera.id === cameraId)) return;
     assignCameraToSlot(cameraId, slotIndex);
   }
+
+  async function runPtz(path: string, busyKey: string) {
+    setPtzBusy(busyKey);
+    setNotification("");
+    try {
+      const response = await fetch(path, { method: "POST", headers: { "X-PTZ-Token": viewerOptions.ptzToken } });
+      const payload = (await response.json()) as PtzCommandResponse & { error?: string };
+      if (!payload.results) throw new Error(payload.error || `PTZ command failed: ${response.status}`);
+      const succeeded = payload.results.filter((result) => result.ok).length;
+      const failed = payload.results.length - succeeded;
+      if (failed === 0) {
+        setNotification(payload.results.length === 1 ? `${payload.results[0].presetName} recalled for ${payload.results[0].cameraName}.` : "Scene recalled successfully.");
+      } else if (succeeded > 0) {
+        setNotification(`Scene completed: ${succeeded} succeeded, ${failed} failed.`);
+      } else {
+        setNotification(payload.results[0]?.error || "PTZ command failed.");
+      }
+    } catch (commandError) {
+      setNotification(commandError instanceof Error ? commandError.message : "PTZ command failed.");
+    } finally {
+      setPtzBusy(null);
+    }
+  }
+
+  const activeCamera = cameras.find((camera) => camera.id === slots[activeSlot]);
 
   return (
     <main className={`viewer-shell menu-${menuPosition} ${menuVisible ? "menu-open" : ""}`} onMouseMove={showMenu}>
@@ -277,6 +301,15 @@ export function ViewerApp() {
             </button>
           ))}
         </div>
+
+        {ptzAuthorized && ((activeCamera?.ptz?.presets.length ?? 0) > 0 || ptzScenes.length > 0) && (
+          <div className="ptz-controls" aria-label="PTZ controls">
+            {(activeCamera?.ptz?.presets.length ?? 0) > 0 && <div className="ptz-control-row"><strong>{activeCamera?.name} Presets</strong><div className="ptz-button-strip">{activeCamera?.ptz?.presets.map((preset) => <button className="camera-chip" disabled={ptzBusy !== null} key={preset.id} onClick={() => void runPtz(`/api/ptz/cameras/${encodeURIComponent(activeCamera.id)}/presets/${encodeURIComponent(preset.id)}`, `preset:${activeCamera.id}:${preset.id}`)} type="button">{ptzBusy === `preset:${activeCamera.id}:${preset.id}` ? "Moving…" : preset.name}</button>)}</div></div>}
+            {ptzScenes.length > 0 && <div className="ptz-control-row"><strong>Scenes</strong><div className="ptz-button-strip">{ptzScenes.map((scene) => <button className="camera-chip scene-chip" disabled={ptzBusy !== null} key={scene.id} onClick={() => void runPtz(`/api/ptz/scenes/${encodeURIComponent(scene.id)}`, `scene:${scene.id}`)} type="button">{ptzBusy === `scene:${scene.id}` ? "Moving…" : scene.name}</button>)}</div></div>}
+          </div>
+        )}
+
+        {notification && <div className="viewer-notification" role="status">{notification}</div>}
 
         <div className="viewer-load-status" aria-label="Live load status">
           <span>

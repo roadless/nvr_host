@@ -8,19 +8,21 @@
     "dev:client": "vite --host 0.0.0.0",
     "build": "tsc -p tsconfig.server.json && vite build",
     "start": "node dist/server/server/index.js",
+    "test": "tsx --test src/server/*.test.ts",
     "typecheck": "tsc --noEmit -p tsconfig.json && tsc --noEmit -p tsconfig.server.json"
   },
   "dependencies": {
     "express": "^4.19.2",
-    "js-yaml": "^4.1.0"
+    "js-yaml": "^4.1.0",
+    "onvif": "0.8.1"
   },
   "devDependencies": {
-    "@vitejs/plugin-react": "^5.1.1",
     "@types/express": "^4.17.21",
     "@types/js-yaml": "^4.0.9",
     "@types/node": "^22.10.2",
     "@types/react": "^19.2.6",
     "@types/react-dom": "^19.2.3",
+    "@vitejs/plugin-react": "^5.1.1",
     "lucide-react": "^0.468.0",
     "react": "^19.2.1",
     "react-dom": "^19.2.1",

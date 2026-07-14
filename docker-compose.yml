@@ -7,6 +7,7 @@ services:
       PORT: "3000"
       ADMIN_USER: ${ADMIN_USER:-admin}
       ADMIN_PASSWORD: ${ADMIN_PASSWORD:-change-me}
+      PTZ_CONTROL_TOKEN: ${PTZ_CONTROL_TOKEN:-}
       CAMERA_CONFIG_PATH: /app/data/cameras.yaml
       GO2RTC_CONFIG_PATH: /app/data/go2rtc.yaml
       GO2RTC_BASE_URL: http://go2rtc:1984

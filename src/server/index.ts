@@ -4,6 +4,7 @@ import { fileURLToPath } from "node:url";
 import express, { type NextFunction, type Request, type Response } from "express";
 import {
   buildPublicCameras,
+  buildPublicPtzScenes,
   readCameraConfig,
   validateCameraConfig,
   writeCameraConfig,
@@ -11,12 +12,15 @@ import {
 } from "./config.js";
 import { checkGo2Rtc, readStreamHealth, restartGo2Rtc } from "./go2rtc.js";
 import { readSystemInfo } from "./system.js";
+import { clearPtzClientCache, discoverPtz, isPtzControlAuthorized, recallCameraPreset, recallPtzScene } from "./ptz.js";
+import type { PtzDiscoveryRequest } from "../shared/types.js";
 
 const app = express();
 const port = Number(process.env.PORT ?? 3000);
 const adminUser = process.env.ADMIN_USER ?? "admin";
 const adminPassword = process.env.ADMIN_PASSWORD ?? "change-me";
 const publicGo2RtcPort = process.env.GO2RTC_PUBLIC_PORT ?? "1984";
+const ptzControlToken = process.env.PTZ_CONTROL_TOKEN ?? "";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const clientDir = process.env.CLIENT_DIR ?? path.resolve(process.cwd(), "dist/client");
@@ -50,6 +54,19 @@ function requireAdmin(req: Request, res: Response, next: NextFunction) {
     return;
   }
 
+  next();
+}
+
+function hasPtzControl(req: Request) {
+  const supplied = req.header("X-PTZ-Token") ?? "";
+  return isPtzControlAuthorized(supplied, ptzControlToken);
+}
+
+function requirePtzControl(req: Request, res: Response, next: NextFunction) {
+  if (!hasPtzControl(req)) {
+    res.status(403).json({ error: "PTZ control is not authorized." });
+    return;
+  }
   next();
 }
 
@@ -96,14 +113,68 @@ app.get("/api/stream-health", requireAdmin, async (_req, res, next) => {
 app.get("/api/cameras", async (_req, res, next) => {
   try {
     const config = await readCameraConfig();
+    const ptzAuthorized = hasPtzControl(_req);
     res.json({
-      cameras: buildPublicCameras(config),
+      cameras: buildPublicCameras(config, ptzAuthorized),
       viewer: config.viewer,
       go2rtc: {
         publicPort: publicGo2RtcPort,
         playbackMode: config.viewer.playbackMode
-      }
+      },
+      ptzAuthorized,
+      ptzScenes: ptzAuthorized ? buildPublicPtzScenes(config) : []
     });
+  } catch (error) {
+    next(error);
+  }
+});
+
+app.post("/api/admin/ptz/discover", requireAdmin, async (req, res, next) => {
+  try {
+    const settings: PtzDiscoveryRequest = {
+      host: String(req.body?.host ?? "").trim(),
+      port: Number(req.body?.port ?? 80),
+      username: String(req.body?.username ?? "").trim(),
+      password: String(req.body?.password ?? ""),
+      profileToken: String(req.body?.profileToken ?? "").trim() || undefined
+    };
+    if (!settings.host || /[/:]/.test(settings.host) || !settings.username) {
+      throw new Error("ONVIF host and username are required.");
+    }
+    if (!Number.isInteger(settings.port) || settings.port < 1 || settings.port > 65535) {
+      throw new Error("ONVIF port must be an integer between 1 and 65535.");
+    }
+    res.json(await discoverPtz(settings));
+  } catch (error) {
+    next(error);
+  }
+});
+
+app.post("/api/ptz/cameras/:cameraId/presets/:presetId", requirePtzControl, async (req, res, next) => {
+  try {
+    const config = await readCameraConfig();
+    const camera = config.cameras.find((item) => item.id === req.params.cameraId);
+    if (!camera) {
+      res.status(404).json({ error: "Camera not found." });
+      return;
+    }
+    const result = await recallCameraPreset(camera, req.params.presetId);
+    res.status(result.ok ? 200 : 502).json({ ok: result.ok, results: [result] });
+  } catch (error) {
+    next(error);
+  }
+});
+
+app.post("/api/ptz/scenes/:sceneId", requirePtzControl, async (req, res, next) => {
+  try {
+    const config = await readCameraConfig();
+    const scene = config.ptzScenes.find((item) => item.id === req.params.sceneId);
+    if (!scene) {
+      res.status(404).json({ error: "PTZ scene not found." });
+      return;
+    }
+    const results = await recallPtzScene(scene, config.cameras);
+    res.json({ ok: results.every((result) => result.ok), results });
   } catch (error) {
     next(error);
   }
@@ -122,6 +193,7 @@ app.post("/api/config", requireAdmin, async (req, res, next) => {
     const config = validateCameraConfig(req.body);
     await writeCameraConfig(config);
     await writeGo2RtcConfig(config);
+    clearPtzClientCache();
     const restart = await restartGo2Rtc();
     res.json({
       ok: true,

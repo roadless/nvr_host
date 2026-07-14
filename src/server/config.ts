@@ -1,7 +1,15 @@
 import fs from "node:fs/promises";
 import path from "node:path";
 import yaml from "js-yaml";
-import type { CameraConfig, CameraConfigFile, CameraPublic, PlaybackMode, ViewerMenuPosition } from "../shared/types.js";
+import type {
+  CameraConfig,
+  CameraConfigFile,
+  CameraPtzConfig,
+  CameraPublic,
+  PlaybackMode,
+  PtzScenePublic,
+  ViewerMenuPosition
+} from "../shared/types.js";
 
 const ID_PATTERN = /^[a-zA-Z0-9_-]+$/;
 const viewerMenuPositions = new Set<ViewerMenuPosition>(["bottom", "top", "right", "left"]);
@@ -37,14 +45,14 @@ function go2RtcWebRtcCandidates() {
     .filter(Boolean);
 }
 
-export function buildPublicCameras(config: CameraConfigFile): CameraPublic[] {
+export function buildPublicCameras(config: CameraConfigFile, includePtz = false): CameraPublic[] {
   const streamsByUrl = new Map<string, string>();
 
   return config.cameras
     .filter((camera) => camera.enabled)
     .map((camera) => {
       const names = streamNames(camera.id);
-      return {
+      const publicCamera: CameraPublic = {
         id: camera.id,
         name: camera.name,
         enabled: camera.enabled,
@@ -53,7 +61,19 @@ export function buildPublicCameras(config: CameraConfigFile): CameraPublic[] {
           sub: firstStreamNameForUrl(streamsByUrl, names.sub, camera.subRtsp)
         }
       };
+      if (includePtz && camera.ptz.enabled) {
+        publicCamera.ptz = {
+          presets: camera.ptz.presets
+            .filter((preset) => preset.visible && preset.available)
+            .map((preset) => ({ id: preset.id, name: preset.displayName }))
+        };
+      }
+      return publicCamera;
     });
+}
+
+export function buildPublicPtzScenes(config: CameraConfigFile): PtzScenePublic[] {
+  return config.ptzScenes.map((scene) => ({ id: scene.id, name: scene.name }));
 }
 
 export async function readCameraConfig(): Promise<CameraConfigFile> {
@@ -140,12 +160,61 @@ export function validateCameraConfig(input: unknown): CameraConfigFile {
       throw new Error(`Camera at index ${index} must be an object.`);
     }
 
+    const rawPtz = (camera as Partial<CameraConfig>).ptz;
+    const ptz: CameraPtzConfig = {
+      enabled: Boolean(rawPtz?.enabled),
+      protocol: "onvif",
+      host: String(rawPtz?.host ?? "").trim(),
+      port: Number(rawPtz?.port ?? 80),
+      username: String(rawPtz?.username ?? "").trim(),
+      password: String(rawPtz?.password ?? ""),
+      profileToken: String(rawPtz?.profileToken ?? "").trim(),
+      presets: []
+    };
+
+    if (!Number.isInteger(ptz.port) || ptz.port < 1 || ptz.port > 65535) {
+      throw new Error(`Camera ${index + 1} PTZ port must be an integer between 1 and 65535.`);
+    }
+    if (ptz.host.length > 253 || /[/:]/.test(ptz.host)) {
+      throw new Error(`Camera ${index + 1} PTZ host must be an IP address or hostname without a scheme or path.`);
+    }
+    if (ptz.enabled && (!ptz.host || !ptz.username)) {
+      throw new Error(`Camera ${index + 1} PTZ requires a host and username.`);
+    }
+
+    const presetIds = new Set<string>();
+    const presetTokens = new Set<string>();
+    const rawPresets = Array.isArray(rawPtz?.presets) ? rawPtz.presets : [];
+    ptz.presets = rawPresets.map((preset, presetIndex) => {
+      const normalizedPreset = {
+        id: String(preset?.id ?? "").trim(),
+        token: String(preset?.token ?? "").trim(),
+        sourceName: String(preset?.sourceName ?? "").trim(),
+        displayName: String(preset?.displayName ?? preset?.sourceName ?? "").trim(),
+        visible: preset?.visible !== false,
+        available: preset?.available !== false
+      };
+      if (!ID_PATTERN.test(normalizedPreset.id)) {
+        throw new Error(`Camera ${index + 1} preset ${presetIndex + 1} has an invalid id.`);
+      }
+      if (!normalizedPreset.token || !normalizedPreset.displayName) {
+        throw new Error(`Camera ${index + 1} preset ${presetIndex + 1} requires a token and display name.`);
+      }
+      if (presetIds.has(normalizedPreset.id) || presetTokens.has(normalizedPreset.token)) {
+        throw new Error(`Camera ${index + 1} contains duplicate preset ids or tokens.`);
+      }
+      presetIds.add(normalizedPreset.id);
+      presetTokens.add(normalizedPreset.token);
+      return normalizedPreset;
+    });
+
     const normalized: CameraConfig = {
       id: String(camera.id ?? "").trim(),
       name: String(camera.name ?? "").trim(),
       enabled: Boolean(camera.enabled),
       mainRtsp: String(camera.mainRtsp ?? "").trim(),
-      subRtsp: String(camera.subRtsp ?? "").trim()
+      subRtsp: String(camera.subRtsp ?? "").trim(),
+      ptz
     };
 
     if (!normalized.id || !ID_PATTERN.test(normalized.id)) {
@@ -168,5 +237,43 @@ export function validateCameraConfig(input: unknown): CameraConfigFile {
     return normalized;
   });
 
-  return { viewer, cameras };
+  const cameraById = new Map(cameras.map((camera) => [camera.id, camera]));
+  const sceneIds = new Set<string>();
+  const rawScenes = Array.isArray((input as Partial<CameraConfigFile>).ptzScenes)
+    ? (input as Partial<CameraConfigFile>).ptzScenes!
+    : [];
+  const ptzScenes = rawScenes.map((scene, sceneIndex) => {
+    const id = String(scene?.id ?? "").trim();
+    const name = String(scene?.name ?? "").trim();
+    if (!ID_PATTERN.test(id) || sceneIds.has(id)) {
+      throw new Error(`PTZ scene ${sceneIndex + 1} has an invalid or duplicate id.`);
+    }
+    if (!name) throw new Error(`PTZ scene ${id} requires a name.`);
+    if (!Array.isArray(scene.actions) || scene.actions.length < 1 || scene.actions.length > 36) {
+      throw new Error(`PTZ scene ${id} must contain between 1 and 36 actions.`);
+    }
+
+    const sceneCameraIds = new Set<string>();
+    const actions = scene.actions.map((action, actionIndex) => {
+      const cameraId = String(action?.cameraId ?? "").trim();
+      const presetId = String(action?.presetId ?? "").trim();
+      const camera = cameraById.get(cameraId);
+      if (!camera?.ptz.enabled) {
+        throw new Error(`PTZ scene ${id} action ${actionIndex + 1} references a missing or disabled PTZ camera.`);
+      }
+      if (sceneCameraIds.has(cameraId)) {
+        throw new Error(`PTZ scene ${id} contains camera ${cameraId} more than once.`);
+      }
+      const preset = camera.ptz.presets.find((item) => item.id === presetId);
+      if (!preset?.available) {
+        throw new Error(`PTZ scene ${id} references a missing or unavailable preset on camera ${cameraId}.`);
+      }
+      sceneCameraIds.add(cameraId);
+      return { cameraId, presetId };
+    });
+    sceneIds.add(id);
+    return { id, name, actions };
+  });
+
+  return { viewer, cameras, ptzScenes };
 }
