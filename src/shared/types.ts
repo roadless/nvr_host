@@ -81,3 +81,25 @@ export interface SystemInfoResponse {
   };
   go2rtc: HealthResponse["go2rtc"];
 }
+
+export interface StreamHealthItem {
+  cameraId: string;
+  cameraName: string;
+  profile: "main" | "sub";
+  streamName: string;
+  connected: boolean;
+  producerCount: number;
+  consumerCount: number;
+  codecs: string[];
+  inputBytes: number;
+  inputPackets: number;
+  outputBytes: number;
+  outputPackets: number;
+}
+
+export interface StreamHealthResponse {
+  timestamp: string;
+  ok: boolean;
+  error?: string;
+  streams: StreamHealthItem[];
+}

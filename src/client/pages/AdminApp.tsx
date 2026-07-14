@@ -1,10 +1,18 @@
 import { useEffect, useState } from "react";
-import { Plus, RefreshCcw, Save, Trash2 } from "lucide-react";
-import type { CameraConfig, CameraConfigFile, HealthResponse, PlaybackMode, ViewerMenuPosition } from "../../shared/types";
+import { Activity, Cpu, MemoryStick, Plus, RefreshCcw, Save, Trash2 } from "lucide-react";
+import type {
+  CameraConfig,
+  CameraConfigFile,
+  HealthResponse,
+  PlaybackMode,
+  StreamHealthResponse,
+  SystemInfoResponse,
+  ViewerMenuPosition
+} from "../../shared/types";
 
 const defaultViewerConfig: CameraConfigFile["viewer"] = {
   menuPosition: "right",
-  playbackMode: "webrtc"
+  playbackMode: "mse"
 };
 
 const menuPositionOptions: Array<{ value: ViewerMenuPosition; label: string }> = [
@@ -14,11 +22,26 @@ const menuPositionOptions: Array<{ value: ViewerMenuPosition; label: string }> =
   { value: "left", label: "Left" }
 ];
 
-const playbackModeOptions: Array<{ value: PlaybackMode; label: string }> = [
-  { value: "auto", label: "Auto" },
-  { value: "webrtc", label: "WebRTC" },
-  { value: "mse", label: "MSE" }
+const playbackModeOptions: Array<{ value: PlaybackMode; label: string; detail: string }> = [
+  { value: "mse", label: "Akıcı / Kararlı", detail: "MSE kullanır; biraz daha fazla gecikme karşılığında kararlılığı önceler." },
+  { value: "webrtc", label: "Düşük Gecikme", detail: "WebRTC kullanır; ağ ve kiosk donanımına daha duyarlıdır." },
+  {
+    value: "auto",
+    label: "Otomatik",
+    detail: "WebRTC, WebRTC/TCP ve MSE bağlantı sırasını dener; oynatma sırasında takılmayı algılayıp mod değiştirmez."
+  }
 ];
+
+function formatBytes(bytes: number) {
+  const units = ["B", "KB", "MB", "GB", "TB"];
+  let value = bytes;
+  let unit = 0;
+  while (value >= 1024 && unit < units.length - 1) {
+    value /= 1024;
+    unit += 1;
+  }
+  return `${value.toFixed(unit === 0 ? 0 : 1)} ${units[unit]}`;
+}
 
 function blankCamera(index: number): CameraConfig {
   const number = String(index).padStart(2, "0");
@@ -34,6 +57,9 @@ function blankCamera(index: number): CameraConfig {
 export function AdminApp() {
   const [config, setConfig] = useState<CameraConfigFile>({ viewer: defaultViewerConfig, cameras: [] });
   const [health, setHealth] = useState<HealthResponse | null>(null);
+  const [system, setSystem] = useState<SystemInfoResponse | null>(null);
+  const [streamHealth, setStreamHealth] = useState<StreamHealthResponse | null>(null);
+  const [diagnosticError, setDiagnosticError] = useState("");
   const [message, setMessage] = useState("");
   const [saving, setSaving] = useState(false);
   const [restarting, setRestarting] = useState(false);
@@ -50,9 +76,29 @@ export function AdminApp() {
     if (response.ok) setHealth((await response.json()) as HealthResponse);
   }
 
+  async function loadDiagnostics() {
+    setDiagnosticError("");
+    try {
+      const [systemResponse, streamsResponse] = await Promise.all([fetch("/api/system"), fetch("/api/stream-health")]);
+      if (!systemResponse.ok) throw new Error(`System diagnostics could not be loaded: ${systemResponse.status}`);
+      if (!streamsResponse.ok) throw new Error(`Stream diagnostics could not be loaded: ${streamsResponse.status}`);
+      setSystem((await systemResponse.json()) as SystemInfoResponse);
+      setStreamHealth((await streamsResponse.json()) as StreamHealthResponse);
+    } catch (error) {
+      setDiagnosticError(error instanceof Error ? error.message : "Diagnostics could not be loaded.");
+    }
+  }
+
+  async function refreshAll() {
+    await Promise.all([loadConfig(), loadHealth(), loadDiagnostics()]);
+  }
+
   useEffect(() => {
     void loadConfig().catch((error) => setMessage(error instanceof Error ? error.message : "Configuration could not be loaded."));
     void loadHealth();
+    void loadDiagnostics();
+    const timer = window.setInterval(() => void loadDiagnostics(), 5000);
+    return () => window.clearInterval(timer);
   }, []);
 
   function updateCamera(index: number, patch: Partial<CameraConfig>) {
@@ -109,7 +155,7 @@ export function AdminApp() {
       });
       if (!response.ok) throw new Error(`Save failed: ${response.status}`);
       setMessage("Saved.");
-      await loadHealth();
+      await Promise.all([loadHealth(), loadDiagnostics()]);
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "Save failed.");
     } finally {
@@ -145,7 +191,7 @@ export function AdminApp() {
           <span className={health?.go2rtc.ok ? "status-pill ok" : "status-pill warn"}>
             Streaming {health?.go2rtc.ok ? "active" : "unavailable"}
           </span>
-          <button className="icon-text-button" onClick={() => void loadConfig()}>
+          <button className="icon-text-button" onClick={() => void refreshAll()}>
             <RefreshCcw size={18} />
             Refresh
           </button>
@@ -178,7 +224,7 @@ export function AdminApp() {
           </select>
         </div>
         <div className="viewer-setting-field">
-          <span>Viewer playback</span>
+          <span>Viewer playback profile</span>
           <div className="segmented-control">
             {playbackModeOptions.map((option) => (
               <button
@@ -191,6 +237,82 @@ export function AdminApp() {
               </button>
             ))}
           </div>
+          <p className="setting-help">
+            {playbackModeOptions.find((option) => option.value === config.viewer.playbackMode)?.detail}
+          </p>
+        </div>
+      </section>
+
+      <section className="stream-health" aria-label="Stream health diagnostics">
+        <div className="stream-health-heading">
+          <div>
+            <h2>Akış Sağlığı</h2>
+            <p>go2rtc akışları izleyici bağlandığında açar. İzlenmeyen bir akışın “Boşta” görünmesi normaldir.</p>
+          </div>
+          <button className="icon-text-button" onClick={() => void loadDiagnostics()} type="button">
+            <RefreshCcw size={16} />
+            Tanılamayı Yenile
+          </button>
+        </div>
+
+        <div className="diagnostic-summary">
+          <div>
+            <Cpu size={18} />
+            <span>Host CPU</span>
+            <strong>{system ? `${system.cpu.usedPercent.toFixed(1)}%` : "-"}</strong>
+          </div>
+          <div>
+            <MemoryStick size={18} />
+            <span>Host Bellek</span>
+            <strong>{system ? `${system.memory.usedPercent.toFixed(1)}%` : "-"}</strong>
+          </div>
+          <div>
+            <Activity size={18} />
+            <span>Aktif Akış</span>
+            <strong>{streamHealth?.streams.filter((stream) => stream.connected).length ?? 0}</strong>
+          </div>
+        </div>
+
+        <div className="hardware-decode-note">
+          Bu değerler NVR host içindir. Kiosk takılıyorsa aynı kiosk cihazında <code>chrome://gpu</code> sayfasından “Video Decode”
+          donanım hızlandırmasını kontrol edin; doğrudan RTSP testini de aynı cihazda yapın.
+        </div>
+
+        {(diagnosticError || (streamHealth && !streamHealth.ok)) && (
+          <div className="diagnostic-error">{diagnosticError || streamHealth?.error || "go2rtc diagnostics unavailable."}</div>
+        )}
+
+        <div className="stream-health-table">
+          <div className="stream-health-row stream-health-head">
+            <span>Kamera / Profil</span>
+            <span>Durum</span>
+            <span>Codec</span>
+            <span>Bağlantılar</span>
+            <span>Trafik</span>
+          </div>
+          {streamHealth?.streams.map((stream) => (
+            <div className="stream-health-row" key={`${stream.cameraId}-${stream.profile}`}>
+              <span>
+                <strong>{stream.cameraName}</strong>
+                <small>{stream.profile === "main" ? "Main" : "Sub"}</small>
+              </span>
+              <span>
+                <span className={stream.connected ? "stream-state active" : "stream-state idle"}>
+                  {stream.connected ? "Aktif" : "Boşta"}
+                </span>
+              </span>
+              <span>{stream.codecs.join(", ") || "-"}</span>
+              <span>
+                {stream.producerCount} giriş / {stream.consumerCount} izleyici
+              </span>
+              <span>
+                <small>Giriş {formatBytes(stream.inputBytes)} / {stream.inputPackets.toLocaleString("tr-TR")} pkt</small>
+                <small>Çıkış {formatBytes(stream.outputBytes)} / {stream.outputPackets.toLocaleString("tr-TR")} pkt</small>
+              </span>
+            </div>
+          ))}
+          {streamHealth?.streams.length === 0 && <div className="stream-health-empty">Etkin kamera bulunmuyor.</div>}
+          {!streamHealth && <div className="stream-health-empty">Tanılama yükleniyor…</div>}
         </div>
       </section>
 

@@ -532,7 +532,7 @@ button {
   flex-wrap: wrap;
   gap: 14px;
   margin-bottom: 14px;
-  max-width: 520px;
+  max-width: 980px;
   padding: 12px;
   border: 1px solid #d8d2c3;
   border-radius: 8px;
@@ -542,6 +542,7 @@ button {
 .viewer-setting-field {
   display: flex;
   align-items: center;
+  flex-wrap: wrap;
   gap: 10px;
 }
 
@@ -587,6 +588,151 @@ button {
 .segmented-control button.selected {
   background: #0f6b50;
   color: #ffffff;
+}
+
+.setting-help {
+  flex-basis: 100%;
+  margin: 0;
+  color: #716a5c;
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+.stream-health {
+  margin-bottom: 18px;
+  border: 1px solid #d8d2c3;
+  border-radius: 8px;
+  overflow: hidden;
+  background: #ffffff;
+}
+
+.stream-health-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 14px;
+  border-bottom: 1px solid #e5dfd2;
+}
+
+.stream-health-heading h2 {
+  margin: 0 0 4px;
+  font-size: 18px;
+}
+
+.stream-health-heading p {
+  margin: 0;
+  color: #716a5c;
+  font-size: 13px;
+}
+
+.diagnostic-summary {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(150px, 1fr));
+  gap: 10px;
+  padding: 12px 14px;
+  background: #f8f5ed;
+}
+
+.diagnostic-summary > div {
+  display: grid;
+  grid-template-columns: 24px 1fr auto;
+  align-items: center;
+  gap: 8px;
+  color: #5a5548;
+  font-size: 13px;
+}
+
+.diagnostic-summary strong {
+  color: #20201c;
+  font-size: 16px;
+}
+
+.hardware-decode-note,
+.diagnostic-error {
+  margin: 12px 14px;
+  padding: 10px 12px;
+  border-radius: 6px;
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+.hardware-decode-note {
+  border: 1px solid #c9d8d1;
+  background: #edf6f2;
+  color: #285747;
+}
+
+.hardware-decode-note code {
+  color: inherit;
+  font-weight: 700;
+}
+
+.diagnostic-error {
+  border: 1px solid #e4b4a7;
+  background: #fff1ed;
+  color: #8d2d1b;
+}
+
+.stream-health-table {
+  overflow-x: auto;
+  border-top: 1px solid #ece7db;
+}
+
+.stream-health-row {
+  display: grid;
+  min-width: 880px;
+  grid-template-columns: minmax(180px, 1.2fr) 100px minmax(110px, 0.7fr) minmax(170px, 1fr) minmax(260px, 1.5fr);
+  align-items: center;
+  border-top: 1px solid #ece7db;
+}
+
+.stream-health-row:first-child {
+  border-top: 0;
+}
+
+.stream-health-row > span {
+  min-width: 0;
+  padding: 9px 12px;
+}
+
+.stream-health-row small {
+  display: block;
+  color: #716a5c;
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.stream-health-head {
+  min-height: 38px;
+  background: #e7e1d4;
+  color: #5a5548;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.stream-state {
+  display: inline-flex;
+  padding: 4px 8px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.stream-state.active {
+  background: #dcefe4;
+  color: #0f6b50;
+}
+
+.stream-state.idle {
+  background: #ebe7dc;
+  color: #666052;
+}
+
+.stream-health-empty {
+  padding: 18px;
+  color: #716a5c;
+  text-align: center;
 }
 
 .camera-table {
@@ -867,6 +1013,15 @@ button {
   .admin-toolbar {
     align-items: flex-start;
     flex-direction: column;
+  }
+
+  .stream-health-heading {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .diagnostic-summary {
+    grid-template-columns: 1fr;
   }
 
   .viewer-settings {

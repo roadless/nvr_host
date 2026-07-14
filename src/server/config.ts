@@ -8,7 +8,7 @@ const viewerMenuPositions = new Set<ViewerMenuPosition>(["bottom", "top", "right
 const playbackModes = new Set<PlaybackMode>(["auto", "webrtc", "mse"]);
 const defaultViewerConfig: CameraConfigFile["viewer"] = {
   menuPosition: "right",
-  playbackMode: "webrtc"
+  playbackMode: "mse"
 };
 
 export const paths = {

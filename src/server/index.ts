@@ -9,7 +9,7 @@ import {
   writeCameraConfig,
   writeGo2RtcConfig
 } from "./config.js";
-import { checkGo2Rtc, restartGo2Rtc } from "./go2rtc.js";
+import { checkGo2Rtc, readStreamHealth, restartGo2Rtc } from "./go2rtc.js";
 import { readSystemInfo } from "./system.js";
 
 const app = express();
@@ -64,6 +64,30 @@ app.get("/api/health", async (_req, res) => {
 app.get("/api/system", requireAdmin, async (_req, res, next) => {
   try {
     res.json(await readSystemInfo());
+  } catch (error) {
+    next(error);
+  }
+});
+
+app.get("/api/stream-health", requireAdmin, async (_req, res, next) => {
+  try {
+    const config = await readCameraConfig();
+    const publicCameras = buildPublicCameras(config);
+    const targets = publicCameras.flatMap((camera) => [
+      {
+        cameraId: camera.id,
+        cameraName: camera.name,
+        profile: "main" as const,
+        streamName: camera.streams.main
+      },
+      {
+        cameraId: camera.id,
+        cameraName: camera.name,
+        profile: "sub" as const,
+        streamName: camera.streams.sub
+      }
+    ]);
+    res.json(await readStreamHealth(targets));
   } catch (error) {
     next(error);
   }

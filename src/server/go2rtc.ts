@@ -1,11 +1,124 @@
 import http from "node:http";
 import { execFile } from "node:child_process";
 import { promisify } from "node:util";
+import type { StreamHealthItem, StreamHealthResponse } from "../shared/types.js";
 
 const GO2RTC_BASE_URL = process.env.GO2RTC_BASE_URL ?? "http://localhost:1984";
 const GO2RTC_CONTAINER_NAME = process.env.GO2RTC_CONTAINER_NAME ?? "nvr-go2rtc";
 const DOCKER_SOCKET_PATH = process.env.DOCKER_SOCKET_PATH ?? "/var/run/docker.sock";
 const execFileAsync = promisify(execFile);
+
+interface StreamHealthTarget {
+  cameraId: string;
+  cameraName: string;
+  profile: "main" | "sub";
+  streamName: string;
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return Boolean(value) && typeof value === "object" && !Array.isArray(value);
+}
+
+function connections(stream: Record<string, unknown> | undefined, key: "producers" | "consumers") {
+  const value = stream?.[key];
+  return Array.isArray(value) ? value : [];
+}
+
+function collectCodecs(value: unknown, codecs = new Set<string>()): Set<string> {
+  if (Array.isArray(value)) {
+    for (const item of value) collectCodecs(item, codecs);
+    return codecs;
+  }
+  if (!isRecord(value)) return codecs;
+
+  for (const [key, item] of Object.entries(value)) {
+    const normalizedKey = key.toLowerCase().replace(/[^a-z]/g, "");
+    if ((normalizedKey === "codec" || normalizedKey === "codecname") && typeof item === "string") {
+      const codec = item.trim().toUpperCase();
+      if (codec && codec.length <= 32) codecs.add(codec);
+    } else {
+      collectCodecs(item, codecs);
+    }
+  }
+  return codecs;
+}
+
+function sumMetric(value: unknown, metric: "bytes" | "packets"): number {
+  if (Array.isArray(value)) return value.reduce((sum, item) => sum + sumMetric(item, metric), 0);
+  if (!isRecord(value)) return 0;
+
+  let total = 0;
+  for (const [key, item] of Object.entries(value)) {
+    const normalizedKey = key.toLowerCase().replace(/[^a-z]/g, "");
+    if (
+      (normalizedKey === metric || normalizedKey.startsWith(metric) || normalizedKey.endsWith(metric)) &&
+      typeof item === "number" &&
+      Number.isFinite(item)
+    ) {
+      total += Math.max(0, item);
+    } else if (typeof item === "object" && item !== null) {
+      total += sumMetric(item, metric);
+    }
+  }
+  return total;
+}
+
+function emptyStreamHealth(target: StreamHealthTarget): StreamHealthItem {
+  return {
+    ...target,
+    connected: false,
+    producerCount: 0,
+    consumerCount: 0,
+    codecs: [],
+    inputBytes: 0,
+    inputPackets: 0,
+    outputBytes: 0,
+    outputPackets: 0
+  };
+}
+
+export async function readStreamHealth(targets: StreamHealthTarget[]): Promise<StreamHealthResponse> {
+  try {
+    const response = await fetch(`${GO2RTC_BASE_URL}/api/streams`, {
+      signal: AbortSignal.timeout(4000)
+    });
+    if (!response.ok) throw new Error(`go2rtc HTTP ${response.status}`);
+
+    const payload: unknown = await response.json();
+    if (!isRecord(payload)) throw new Error("go2rtc returned an invalid stream response");
+
+    const streams = targets.map((target): StreamHealthItem => {
+      const rawValue = payload[target.streamName];
+      const rawStream = isRecord(rawValue) ? rawValue : undefined;
+      const producers = connections(rawStream, "producers");
+      const consumers = connections(rawStream, "consumers");
+      return {
+        ...target,
+        connected: producers.length > 0,
+        producerCount: producers.length,
+        consumerCount: consumers.length,
+        codecs: [...collectCodecs(producers)].sort(),
+        inputBytes: sumMetric(producers, "bytes"),
+        inputPackets: sumMetric(producers, "packets"),
+        outputBytes: sumMetric(consumers, "bytes"),
+        outputPackets: sumMetric(consumers, "packets")
+      };
+    });
+
+    return {
+      timestamp: new Date().toISOString(),
+      ok: true,
+      streams
+    };
+  } catch (error) {
+    return {
+      timestamp: new Date().toISOString(),
+      ok: false,
+      error: error instanceof Error ? error.message : "Unknown go2rtc stream error",
+      streams: targets.map(emptyStreamHealth)
+    };
+  }
+}
 
 export async function checkGo2Rtc() {
   try {

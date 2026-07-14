@@ -99,7 +99,7 @@ export function ViewerApp() {
   const [cameras, setCameras] = useState<CameraPublic[]>([]);
   const [go2rtcPort, setGo2rtcPort] = useState("1984");
   const [menuPosition, setMenuPosition] = useState<ViewerMenuPosition>("right");
-  const [playbackMode, setPlaybackMode] = useState<PlaybackMode>("webrtc");
+  const [playbackMode, setPlaybackMode] = useState<PlaybackMode>("mse");
   const [layout, setLayout] = useState<LayoutSize>(() => initialState.layout);
   const [selectedIds, setSelectedIds] = useState<string[]>(() => initialState.selectedIds);
   const [activeSlot, setActiveSlot] = useState(0);
@@ -130,7 +130,7 @@ export function ViewerApp() {
       setCameras(data.cameras);
       setMenuPosition(data.viewer?.menuPosition ?? "right");
       setGo2rtcPort(data.go2rtc.publicPort || "1984");
-      setPlaybackMode(data.go2rtc.playbackMode || "webrtc");
+      setPlaybackMode(data.go2rtc.playbackMode || "mse");
     } catch (loadError) {
       setError(loadError instanceof Error ? loadError.message : "Camera list could not be loaded.");
     }
